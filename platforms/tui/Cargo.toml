@@ -1,6 +1,6 @@
 [package]
 name = "tur-tui"
-version = "0.0.1"
+version = "0.1.0"
 description = "Terminal user interface for Turing machine simulator"
 authors.workspace = true
 edition.workspace = true
@@ -15,7 +15,7 @@ name = "tur-tui"
 path = "src/main.rs"
 
 [dependencies]
-tur = { path = "../../", version = "0.0.1" }
+tur = { path = "../../", version = "0.1.0" }
 action = { path = "../action/", version = "0.0.1" }
 crossterm = "0.29"
 ratatui = "0.29.0"

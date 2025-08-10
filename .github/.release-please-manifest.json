@@ -1,5 +1,5 @@
 {
-  ".": "0.0.1",
-  "platforms/cli": "0.0.1",
-  "platforms/tui": "0.0.1"
+  ".": "0.1.0",
+  "platforms/cli": "0.1.0",
+  "platforms/tui": "0.1.0"
 }
