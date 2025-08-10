@@ -1,4 +1,7 @@
 # Tur - Turing Machine Language
+<p align="center">
+  <img src=".github/tur-logo.png" width="400" />
+</p>
 
 **Tur** is a domain-specific language for defining and executing Turing machines, complete with parser, interpreter, and multi-platform visualization tools.
 
