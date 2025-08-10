@@ -19,8 +19,7 @@ pub enum Msg {
     EditorError(String),
     UpdateEditorText(String),
     SetSpeed(u64),
-    ScrollUp,
-    ScrollDown,
+
     HideProgramEditorHelp,
 }
 
@@ -35,7 +34,7 @@ pub struct App {
     last_transition: Option<Transition>,
     previous_state: String,
     speed: u64,
-    scroll_offset: usize,
+
     _keyboard_listener: EventListener,
     keymap: Config<Action>,
     show_program_editor_help: bool,
@@ -65,7 +64,7 @@ impl App {
             last_transition: None,
             previous_state: initial_state,
             speed: 500,
-            scroll_offset: 0,
+
             _keyboard_listener: keyboard_listener,
             keymap: Action::keymap_config(),
             show_program_editor_help: false,
@@ -170,12 +169,7 @@ impl Component for App {
                             ctx.link().send_message(Msg::SelectProgram(new_index));
                         }
                     }
-                    Action::ScrollUp => {
-                        ctx.link().send_message(Msg::ScrollUp);
-                    }
-                    Action::ScrollDown => {
-                        ctx.link().send_message(Msg::ScrollDown);
-                    }
+
                     Action::Quit => {
                         web_sys::console::log_1(
                             &"Quit action received. (No direct equivalent in web app)".into(),
@@ -339,30 +333,6 @@ impl Component for App {
                 self.speed = speed;
                 true
             }
-            Msg::ScrollUp => {
-                if self.scroll_offset > 0 {
-                    self.scroll_offset -= 1;
-                }
-                true
-            }
-            Msg::ScrollDown => {
-                // Find the maximum tape length
-                let max_tape_len = self
-                    .machine
-                    .get_tapes()
-                    .iter()
-                    .map(|tape| tape.len())
-                    .max()
-                    .unwrap_or(0);
-
-                // Assuming a visible window of 10 characters for simplicity
-                let visible_window_size = 10;
-
-                if self.scroll_offset < max_tape_len.saturating_sub(visible_window_size) {
-                    self.scroll_offset += 1;
-                }
-                true
-            }
 
             Msg::HideProgramEditorHelp => {
                 self.show_program_editor_help = false;
@@ -373,7 +343,7 @@ impl Component for App {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let help_text_items = self.keymap.items.iter().map(|(_, item)| {
+        let help_text_items = self.keymap.items.iter().filter(|(_, item)| !item.description.contains("Quit")).map(|(_, item)| {
             html! { <li><kbd class="kbd">{ item.keys.join(", ") }</kbd>{ format!(": {}", item.description) }</li> }
         }).collect::<Html>();
 

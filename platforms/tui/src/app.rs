@@ -348,7 +348,7 @@ impl App {
             } else {
                 "  ← → - Switch programs"
             }),
-            Line::from("  ↑ ↓ - Scroll tape view"),
+
             Line::from("  h - Toggle this help"),
             Line::from("  q - Quit"),
             Line::from(""),
@@ -460,27 +460,6 @@ impl App {
 
         let tape_count = program.tapes.len();
         self.message = format!("Loaded {}-tape program: {}", tape_count, program.name);
-    }
-
-    pub fn scroll_up(&mut self) {
-        if self.scroll_offset > 0 {
-            self.scroll_offset -= 1;
-        }
-    }
-
-    pub fn scroll_down(&mut self) {
-        // Always use multi-tape approach - find the maximum tape length
-        let max_tape_len = self
-            .machine
-            .get_tapes()
-            .iter()
-            .map(|tape| tape.len())
-            .max()
-            .unwrap_or(0);
-
-        if self.scroll_offset < max_tape_len.saturating_sub(10) {
-            self.scroll_offset += 1;
-        }
     }
 
     pub fn toggle_help(&mut self) {

@@ -144,8 +144,6 @@ fn handle_key_event(app: &mut App, key: KeyEvent) -> AppState {
             Action::ToggleHelp => app.toggle_help(),
             Action::PreviousProgram => app.previous_program(),
             Action::NextProgram => app.next_program(),
-            Action::ScrollUp => app.scroll_up(),
-            Action::ScrollDown => app.scroll_down(),
         }
     }
     AppState::Running

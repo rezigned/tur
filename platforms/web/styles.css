@@ -98,7 +98,7 @@ body {
 
 .main-layout {
     display: grid;
-    grid-template-columns: minmax(400px, 1fr) 2fr;
+    grid-template-columns: 2fr 3fr;
     gap: 1.5rem;
 }
 

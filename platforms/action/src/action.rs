@@ -23,10 +23,4 @@ pub enum Action {
     /// Load the next program
     #[key("right")]
     NextProgram,
-    /// Scroll tape view up
-    #[key("up")]
-    ScrollUp,
-    /// Scroll tape view down
-    #[key("down")]
-    ScrollDown,
 }
