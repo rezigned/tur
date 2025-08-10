@@ -1,0 +1,748 @@
+/* Modern & Minimal Stylesheet for Turing Machine Simulator */
+
+/* 1. CSS Variables - The foundation of our design system */
+:root {
+    --font-family-sans: 'Lato', sans-serif;
+    --font-family-heading: 'Outfit', sans-serif;
+    --font-family-mono: 'Fira Code', monospace;
+
+    --background-color: #F8F9FA;
+    --surface-color: #FFFFFF; /* Pure white for cards/panels */
+    --text-color: #212529;
+    --text-muted-color: #6C757D;
+
+    --border-color: #DEE2E6;
+    --border-radius: 8px;
+    --border-width: 1px;
+
+    --tape-border-color: #B0B4B8;
+
+    --accent-color: #007BFF;
+    --accent-color-hover: #0056B3;
+
+    --success-color: #28A745;
+    --warning-color: #FFC107;
+    --danger-color: #DC3545;
+
+    --success-bg: #E8F5E9;
+    --warning-bg: #FFF8E1;
+    --danger-bg: #FFEBEE;
+
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+
+    /* override daisyUI theme */
+    --color-primary: oklch(62% 0.214 259.815);
+    --color-primary-content: oklch(97% 0.034 272.788);
+    --color-secondary: oklch(65% 0.241 354.308);
+    --color-secondary-content: oklch(97% 0.028 342.258);
+    --color-accent: oklch(77% 0.152 181.912);
+    --color-accent-content: oklch(38% 0.063 188.416);
+    --color-neutral: oklch(14% 0.005 285.823);
+    --color-neutral-content: oklch(92% 0.004 286.32);
+    --color-info: oklch(74% 0.16 232.661);
+    --color-info-content: oklch(29% 0.066 243.157);
+    --color-success: oklch(76% 0.177 163.223);
+    --color-success-content: oklch(98% 0.03 173.94);
+    --color-warning: oklch(87% 0.169 91.605);
+    --color-warning-content: oklch(41% 0.112 45.904);
+    --color-error: oklch(71% 0.194 13.428);
+    --color-error-content: oklch(27% 0.105 12.094);
+}
+
+/* 2. General Body & Reset Styles */
+* {
+    margin: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family-sans);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    font-size: 16px;
+    padding-top: 1.5rem;
+}
+
+/* 3. Main App Layout & Header */
+.app {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.header {
+    font-family: var(--font-family-heading);
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.header h1 {
+    font-size: 2rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    background: linear-gradient(45deg, var(--color-success), var(--color-primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.header .tagline {
+    color: var(--text-muted-color);
+    font-weight: 300;
+    font-size: 1.1rem;
+}
+
+.main-layout {
+    display: grid;
+    grid-template-columns: minmax(400px, 1fr) 2fr;
+    gap: 1.5rem;
+}
+
+.left-panel, .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+}
+
+/* Generic section style */
+
+/* 4. Component-Specific Styles */
+
+.card {
+    box-shadow: var(--shadow-sm);
+}
+
+.card-title {
+    font-weight: 500; /* Adjust as needed */
+}
+
+.tape-content-display {
+    font-family: var(--font-family-mono);
+    background-color: var(--background-color);
+    padding: 0.2rem 0.5rem;
+    display: inline-block;
+    border: 1px solid var(--border-color);
+    font-weight: 500;
+}
+
+/* Tape View */
+.tape-machine {
+    position: relative;
+    margin: 0 0 1rem;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    height: 70px; /* Fixed height to contain the tape */
+    /* Ensure the container doesn't expand beyond its bounds */
+    min-width: 0; /* Allow shrinking */
+}
+
+.tape-container {
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    justify-content: flex-start;
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform;
+    width: 100%;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform-origin: left center;
+    /* Position absolutely so the wide container doesn't affect page layout */
+}
+
+.tape-cell {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--background-color);
+    border-left: var(--border-width) solid var(--tape-border-color);
+    font-family: var(--font-family-mono);
+    font-size: 1.2rem;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+    font-feature-settings: "liga" 1, "calt" 1;
+}
+
+.tape-cell:last-child {
+    border-right: var(--border-width) solid var(--tape-border-color);
+}
+
+.tape-cell.under-head {
+    border-color: var(--accent-color);
+    background-color: #eaf3fe;
+    color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+}
+
+.tape-head {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.head-pointer {
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 15px solid var(--accent-color);
+    filter: drop-shadow(0 2px 4px rgba(74, 144, 226, 0.3));
+    margin-left: 1px; /* TODO: remove this and find why the `x` is not center. */
+    margin-top: -25px; /* Adjust positioning to point at cells */
+}
+
+.head-info {
+    text-align: center;
+    color: var(--text-muted-color);
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    font-family: var(--font-family-mono);
+}
+
+.head-info-inline {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-muted-color);
+    font-family: var(--font-family-mono);
+    font-feature-settings: "liga" 1, "calt" 1;
+}
+
+.tape-header, .editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: var(--border-width) solid var(--border-color);
+}
+
+.tape-header h3 {
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.tape-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Speed Control */
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.speed-control label {
+    font-size: 0.9rem;
+    color: var(--text-muted-color);
+    font-weight: 500;
+}
+
+.speed-control select {
+    padding: 0.4rem 0.6rem;
+    border: var(--border-width) solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236C757D%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 0.6em auto;
+    cursor: pointer;
+}
+
+.speed-control select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* State Display */
+.state-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.state-item {
+    padding: 0.75rem;
+    background: #f0f7ff; /* Brighter shade */
+    border-radius: var(--border-radius);
+}
+
+.label {
+    font-weight: 600;
+    color: var(--text-muted-color);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.value {
+    font-weight: 400;
+    font-size: 1.1rem;
+}
+
+.state-name {
+    color: var(--accent-color);
+}
+
+.symbol {
+    font-family: var(--font-family-mono);
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-feature-settings: "liga" 1, "calt" 1;
+    font-weight: 500;
+}
+
+.status.running { color: var(--success-color); font-weight: 700; }
+.status.halted { color: var(--danger-color); font-weight: 700; }
+.status.ready { color: var(--accent-color); font-weight: 700; }
+
+/* Control Panel & Buttons */
+.controls {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Program Editor */
+.program-editor {
+    /* No specific styles here, inherits from .section */
+}
+
+.editor-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.syntax-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 1rem;
+    font-family: var(--font-family-mono);
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.6;
+    color: transparent;
+    background: transparent;
+    border: var(--border-width) solid transparent;
+    border-radius: var(--border-radius);
+    pointer-events: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: hidden;
+    z-index: 1;
+
+    /* Enable ligatures to match textarea */
+    font-feature-settings: "liga" 1, "calt" 1;
+    font-variant-ligatures: common-ligatures contextual;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* CodeMirror styling */
+.CodeMirror {
+    font-family: var(--font-family-mono) !important;
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+    border: var(--border-width) solid var(--border-color) !important;
+    border-radius: var(--border-radius) !important;
+    background: var(--background-color);
+    color: var(--text-color) !important;
+    height: auto !important;
+    min-height: 300px !important;
+}
+
+.CodeMirror-scroll {
+    padding: 1rem !important;
+}
+
+.CodeMirror-focused .CodeMirror-cursor {
+    border-left: 2px solid var(--accent-color) !important;
+}
+
+/* Syntax highlighting for Turing machine language */
+.cm-operator {
+    color: #E36209;
+    font-weight: 500;
+}
+
+.editor-content .cm-s-cobalt span.cm-bracket,
+.cm-punctuation {
+    color: #777; /* A distinct color for punctuation */
+}
+
+.editor-controls {
+    margin-bottom: 1rem;
+}
+
+.editor-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.program-textarea {
+    width: 100%;
+    flex-grow: 1;
+    padding: 1rem;
+    border: var(--border-width) solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: var(--font-family-mono);
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.6;
+    resize: none;
+    background: var(--background-color);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    color: var(--text-color);
+
+    /* Enable ligatures for better coding experience */
+    font-feature-settings: "liga" 1, "calt" 1;
+    font-variant-ligatures: common-ligatures contextual;
+
+    /* Better text rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    margin-bottom: 1rem;
+}
+
+.program-textarea {
+    margin-bottom: 1rem;
+}
+
+.program-selector-dropdown {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.program-status {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    border: var(--border-width) solid transparent;
+}
+
+.program-status.success {
+    background-color: var(--success-bg);
+    color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.program-status.error {
+    background-color: var(--danger-bg);
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.program-status svg {
+    height: 1.25rem;
+    width: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.program-editor .alert {
+    margin-top: 1rem;
+}
+
+.program-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+}
+
+.program-textarea.error {
+    border-color: var(--danger-color);
+    background: var(--danger-bg);
+}
+
+/* Program Format Help */
+.editor-help {
+    position: relative; /* Establish positioning context for absolute child */
+    margin-top: 1rem;
+}
+
+.editor-help button {
+  border: none;
+  font-size: 1.1rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.editor-help button:hover {
+  opacity: 1;
+}
+
+.editor-help-link {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--accent-color); /* Use accent color for links */
+    text-decoration: underline;
+    cursor: pointer;
+    z-index: 10; /* Ensure it's above the textarea */
+}
+
+.editor-help-link:hover {
+    color: var(--accent-color-hover);
+}
+
+.help-details {
+    background: var(--surface-color);
+    border: var(--border-width) solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-top: 1rem; /* Keep existing margin-top from .editor-help details */
+}
+
+.help-summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-color);
+    padding: 0.5rem 0;
+    list-style: none; /* Remove default marker */
+    display: block; /* Ensure it takes full width */
+}
+
+.help-summary::-webkit-details-marker {
+    display: none; /* Hide default marker for Webkit browsers */
+}
+
+.help-summary::before {
+    content: '▶'; /* Custom marker */
+    display: inline-block;
+    width: 1em;
+    margin-right: 0.5em;
+    transition: transform 0.2s ease-in-out;
+}
+
+.help-details[open] .help-summary::before {
+    transform: rotate(90deg);
+}
+
+.help-content {
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 1rem;
+}
+
+.help-heading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    margin-bottom: 0.75rem;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 0.25rem;
+}
+
+.help-paragraph {
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+    color: var(--text-color);
+}
+
+.help-list {
+    list-style: disc;
+    margin-left: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.help-list-item {
+    margin-bottom: 0.25rem;
+    color: var(--text-color);
+}
+
+.help-code-block {
+    background-color: #f8f8f8; /* Light background for code */
+    border: 1px solid #ddd;
+    border-left: 4px solid var(--accent-color); /* Accent border */
+    padding: 1rem;
+    margin-top: 0.75rem;
+    margin-bottom: 1rem;
+    font-family: var(--font-family-mono);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    overflow-x: auto; /* Enable horizontal scrolling for long lines */
+    border-radius: var(--border-radius);
+    color: #333;
+}
+
+.help-kbd {
+    display: inline-block;
+    padding: 0.1em 0.6em;
+    font-family: var(--font-family-mono);
+    font-size: 0.85em;
+    line-height: 1;
+    color: #444;
+    background-color: #f7f7f7;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2), 0 0 0 2px #fff inset;
+    white-space: nowrap;
+}
+
+/* Graph View */
+#graph-container {
+    width: 100% !important;
+    height: 400px !important;
+    border: none !important;
+    border-radius: var(--border-radius) !important;
+    background: #F5F7FA !important;
+}
+
+.visualization-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.tape-and-state-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Status Section */
+.status-section {
+    text-align: center;
+}
+.status-message {
+    font-size: 1rem;
+    color: var(--text-muted-color);
+    font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 1000px) {
+    .main-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .app {
+        padding: 1.5rem;
+    }
+    .main-layout, .left-panel, .right-panel {
+        gap: 1.5rem;
+    }
+    .card, .program-selector-section, .editor-section, .tape-view,
+.state-display,
+.control-panel,
+.graph-view,
+.multi-tape-view,
+.status-section {
+    /* These styles are now handled by .section */
+}
+    .btn {
+        padding: 0.7rem 1.4rem;
+        font-size: 0.9rem;
+    }
+}
+
+.socials {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+}
+/* Share Button Styles */
+.share-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.share-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.share-url-display {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+}
+
+.share-url-display input {
+    font-family: var(--font-family-mono);
+    font-size: 0.75rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.share-section .alert {
+    margin-top: 0.5rem;
+}
+
+.share-section .alert svg {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Responsive adjustments for share functionality */
+@media (max-width: 768px) {
+    .share-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .share-url-display {
+        width: 100%;
+    }
+}
+
+/* Loading spinner for share button */
+.loading.loading-spinner.loading-xs {
+    width: 1rem;
+    height: 1rem;
+}
+.share-section .btn svg {
+    width: 1rem !important;
+    height: 1rem !important;
+}
+
+.socials img {
+    height: 20px;
+}

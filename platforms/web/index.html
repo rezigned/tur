@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Turing Machine Simulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- JetBrains Mono font with ligatures for code editor -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500&family=Lato:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..600&display=swap" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/base/properties.css,npm/daisyui@5/base/rootcolor.css,npm/daisyui@5/base/reset.css,npm/daisyui@5/components/select.css,npm/daisyui@5/components/card.css,npm/daisyui@5/components/kbd.css,npm/daisyui@5/components/alert.css,npm/daisyui@5/components/modal.css,npm/daisyui@5/components/button.css,npm/daisyui@5/colors/properties.css,npm/daisyui@5/theme/cupcake.css,npm/daisyui@5/theme/light.css" rel="stylesheet" type="text/css" />
+    <link data-trunk rel="css" href="styles.css" />
+
+    <!-- Cytoscape.js for graph visualization -->
+    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+
+    <!-- CodeMirror for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/cobalt.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+
+    <!-- CodeMirror for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+
+    <!-- Custom Turing Machine Syntax Highlighter -->
+    <script data-trunk src="turing-editor.js"></script>
+</head>
+
+<body>
+    <div class="socials">
+        <a class="github-stars" href="https://github.com/rezigned/tur" target="_blank"><img src="https://img.shields.io/github/stars/rezigned/tur?style=social" alt="GitHub stars"></a>
+        <a class="github-forks" href="https://github.com/rezigned/tur" target="_blank"><img src="https://img.shields.io/github/forks/rezigned/tur?style=social" alt="GitHub forks"></a>
+    </div>
+    <header class="header">
+        <h1>Turing Machine Simulator</h1>
+        <p class="tagline">Bringing Alan Turing's foundational concepts to life through interactive visualization.</p>
+    </header>
+    <div id="app" class="app"></div>
+</body>
+</html>

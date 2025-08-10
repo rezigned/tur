@@ -1,0 +1,13 @@
+name: Multi-Tape Example
+heads: [0, 0]
+tapes:
+  [a, b, c]
+  [x, y, z]
+rules:
+  start:
+    [a, x] -> [b, y], [R, R], middle
+    [b, y] -> [c, z], [L, R], start
+  middle:
+    [b, y] -> [c, z], [R, S], end
+    [c, z] -> [a, x], [L, L], start
+  end:

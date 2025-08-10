@@ -1,0 +1,14 @@
+name: Even Number Checker
+tape: 1, 0, 1, 0
+rules:
+  start:
+    0 -> 0, R, start
+    1 -> 1, R, start
+    _ -> _, L, check  # Reached end, go back to last digit
+  check:
+    0 -> 0, S, accept  # Last digit is 0 - number is even
+    1 -> 1, S, reject  # Last digit is 1 - number is odd
+  accept:
+    # Machine halts - INPUT IS EVEN
+  reject:
+    # Machine halts - INPUT IS ODD

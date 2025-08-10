@@ -1,0 +1,13 @@
+name: Binary addition
+tape: $, 0, 0, 1, 1, 1, -
+rules:
+  start:
+    $ -> $, R, s1
+  s1:
+    0 -> 0, R, s1
+    1 -> 1, R, s1
+    - -> -, L, s2
+  s2:
+    1 -> 0, L, s2
+    0 -> 1, L, stop
+  stop:

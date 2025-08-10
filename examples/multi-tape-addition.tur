@@ -1,0 +1,20 @@
+name: Multi-Tape Addition
+heads: [0, 0, 0]
+tapes:
+  [1, 0, 1]
+  [1, 1, 0]
+  [-, -, -]
+rules:
+  start:
+    [1, 1, -] -> [1, 1, 0], [R, R, R], carry
+    [1, 0, -] -> [1, 0, 1], [R, R, R], start
+    [0, 1, -] -> [0, 1, 1], [R, R, R], start
+    [0, 0, -] -> [0, 0, 0], [R, R, R], start
+    [-, -, -] -> [-, -, -], [S, S, S], halt
+  carry:
+    [1, 1, -] -> [1, 1, 1], [R, R, R], carry
+    [1, 0, -] -> [1, 0, 0], [R, R, R], carry
+    [0, 1, -] -> [0, 1, 0], [R, R, R], carry
+    [0, 0, -] -> [0, 0, 1], [R, R, R], start
+    [-, -, -] -> [-, -, 1], [S, S, S], halt
+  halt:

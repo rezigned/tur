@@ -1,0 +1,9 @@
+[package]
+name = "action"
+version = "0.0.1"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+keymap = { version = "1.0.0-rc.3" }

@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write # For creating label
+
+jobs:
+  # Create release PR and handle releases
+  release:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
+  # Publish to crates.io
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    if: ${{ needs.release.outputs.release_created }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Publish tur (core library)
+        run: cargo publish --package tur --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for tur to be available
+        run: sleep 30
+
+      - name: Publish CLI
+        run: cargo publish --package tur-cli --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Wait for CLI to be available
+        run: sleep 30
+
+      - name: Publish TUI
+        run: cargo publish --package tur-tui --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Build release binaries
+  # build-binaries:
+  #   name: Build Release Binaries
+  #   runs-on: ${{ matrix.os }}
+  #   if: github.event_name == 'release'
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - os: ubuntu-latest
+  #           target: x86_64-unknown-linux-gnu
+  #           suffix: ""
+  #         - os: macos-latest
+  #           target: x86_64-apple-darwin
+  #           suffix: ""
+  #         - os: macos-latest
+  #           target: aarch64-apple-darwin
+  #           suffix: ""
+  #         - os: windows-latest
+  #           target: x86_64-pc-windows-msvc
+  #           suffix: ".exe"
+  #
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Install Rust
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         targets: ${{ matrix.target }}
+  #
+  #     - name: Cache dependencies
+  #       uses: Swatinem/rust-cache@v2
+  #       with:
+  #         key: ${{ matrix.target }}
+  #
+  #     - name: Build CLI
+  #       run: cargo build --release --bin tur-cli --target ${{ matrix.target }}
+  #
+  #     - name: Build TUI
+  #       run: cargo build --release --bin tur-tui --target ${{ matrix.target }}
+  #
+  #     - name: Package binaries (Unix)
+  #       if: matrix.os != 'windows-latest'
+  #       run: |
+  #         mkdir -p dist
+  #         cp target/${{ matrix.target }}/release/tur-cli dist/tur-cli-${{ matrix.target }}
+  #         cp target/${{ matrix.target }}/release/tur-tui dist/tur-tui-${{ matrix.target }}
+  #
+  #     - name: Package binaries (Windows)
+  #       if: matrix.os == 'windows-latest'
+  #       run: |
+  #         mkdir dist
+  #         cp target/${{ matrix.target }}/release/tur-cli.exe dist/tur-cli-${{ matrix.target }}.exe
+  #         cp target/${{ matrix.target }}/release/tur-tui.exe dist/tur-tui-${{ matrix.target }}.exe
+  #
+  #     - name: Upload binaeies to release
+  #       uses: softprops/action-gh-release@v1
+  #       with:
+  #         tag_name: ${{ needs.release-please.outputs.tag_name }}
+  #         files: dist/*
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

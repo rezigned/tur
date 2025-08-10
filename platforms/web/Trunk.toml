@@ -1,0 +1,13 @@
+[build]
+target = "index.html"
+dist = "dist"
+assets = ["turing-editor.js"]
+
+[watch]
+watch = ["src", "styles.css", "turing-editor.js"]
+ignore = ["dist"]
+
+[serve]
+address = "127.0.0.1"
+port = 8080
+open = true

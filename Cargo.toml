@@ -1,0 +1,52 @@
+[workspace]
+members = [
+    "platforms/tui",
+    "platforms/web",
+    "platforms/cli",
+    "platforms/action"
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["Marut K <me@rezigned.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rezigned/tur"
+homepage = "https://github.com/rezigned/tur"
+documentation = "https://docs.rs/tur"
+keywords = ["turing-machine", "language", "interpreter", "parser", "dsl"]
+categories = ["compilers", "command-line-utilities", "parser-implementations"]
+
+[workspace.dependencies]
+# Shared dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+lazy_static = "1.4"
+tempfile = "3.8"
+regex = "1.10"
+
+# Core library as root package
+[package]
+name = "tur"
+version = "0.0.1"
+description = "Turing Machine Language - Parser, interpreter, and execution engine"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+lazy_static = "1.4"
+pest = "2.0"
+pest_derive = "2.0"
+
+[dev-dependencies]
+tempfile = "3.8"

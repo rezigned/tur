@@ -1,0 +1,469 @@
+use crate::components::{GraphView, ProgramEditor, ShareButton, TapeView};
+use crate::url_sharing::UrlSharing;
+use action::Action;
+use gloo_events::EventListener;
+
+use keymap::{Config, KeyMapConfig};
+use tur::{Direction, ExecutionResult, Program, ProgramManager, Transition, TuringMachine};
+use wasm_bindgen::JsCast;
+use yew::prelude::*;
+
+pub enum Msg {
+    PerformAction(Action),
+    Step,
+    Reset,
+    ToggleAutoPlay,
+    SelectProgram(usize),
+    AutoStep,
+    LoadCustomProgram(Program),
+    EditorError(String),
+    UpdateEditorText(String),
+    SetSpeed(u64),
+    ScrollUp,
+    ScrollDown,
+    ToggleHelpModal,
+}
+
+pub struct App {
+    machine: TuringMachine,
+    current_program: usize,
+    auto_play: bool,
+    message: String,
+    editor_text: String,
+    is_program_ready: bool,
+    current_program_def: Program,
+    last_transition: Option<Transition>,
+    previous_state: String,
+    speed: u64,
+    scroll_offset: usize,
+    _keyboard_listener: EventListener,
+    keymap: Config<Action>,
+    show_help_modal: bool,
+    tape_left_offsets: Vec<usize>,
+}
+
+impl App {
+    fn new(
+        program: Program,
+        program_text: String,
+        program_index: usize,
+        message: String,
+        keyboard_listener: EventListener,
+    ) -> Self {
+        let machine = TuringMachine::new(&program);
+        let initial_state = program.initial_state.clone();
+        let num_tapes = machine.get_tapes().len();
+
+        Self {
+            machine,
+            current_program: program_index,
+            auto_play: false,
+            message,
+            editor_text: program_text,
+            is_program_ready: true,
+            current_program_def: program,
+            last_transition: None,
+            previous_state: initial_state,
+            speed: 500,
+            scroll_offset: 0,
+            _keyboard_listener: keyboard_listener,
+            keymap: Action::keymap_config(),
+            show_help_modal: false,
+            tape_left_offsets: vec![0; num_tapes],
+        }
+    }
+
+    fn view_help_modal(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <div class="modal modal-open">
+                <div class="modal-box">
+                    <h3 class="font-bold text-lg">{"Help"}</h3>
+                    <p class="py-4">{"This is a Turing machine simulator. You can write your own programs or use one of the examples. The machine can be controlled with the buttons or with the keyboard shortcuts."}</p>
+                    <div class="modal-action">
+                        <button class="btn" onclick={ctx.link().callback(|_| Msg::ToggleHelpModal)}>{ "Close" }</button>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+}
+
+impl Component for App {
+    type Message = Msg;
+    type Properties = ();
+
+    fn create(ctx: &Context<Self>) -> Self {
+        let keymap_config = Action::keymap_config();
+        let link = ctx.link().clone();
+        let keyboard_listener = EventListener::new(
+            &web_sys::window().unwrap().document().unwrap(),
+            "keydown",
+            move |event| {
+                let event = event.dyn_ref::<web_sys::KeyboardEvent>().unwrap();
+                let active_element = web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .active_element();
+
+                if let Some(element) = active_element {
+                    if element.tag_name().to_lowercase() == "textarea"
+                        || element.tag_name().to_lowercase() == "input"
+                    {
+                        return;
+                    }
+                }
+
+                if let Some(action) = keymap_config.get(event) {
+                    link.send_message(Msg::PerformAction(*action));
+                }
+            },
+        );
+
+        // Check if there's a shared program in the URL
+        if let Some(shared_program) = UrlSharing::extract_from_url() {
+            if let Ok(program) = tur::parser::parse(&shared_program.code) {
+                return App::new(
+                    program,
+                    shared_program.code,
+                    usize::MAX, // Custom program index
+                    format!("Loaded shared program: {}", shared_program.name),
+                    keyboard_listener,
+                );
+            } else if let Err(e) = tur::parser::parse(&shared_program.code) {
+                web_sys::console::warn_1(&format!("Failed to parse shared program: {}", e).into());
+            }
+        }
+
+        // Default initialization
+        let program = ProgramManager::get_program_by_index(0).unwrap();
+        let editor_text = ProgramManager::get_program_text_by_index(0)
+            .unwrap_or("")
+            .to_string();
+
+        App::new(program, editor_text, 0, "".to_string(), keyboard_listener)
+    }
+
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            Msg::PerformAction(action) => {
+                match action {
+                    Action::Step => {
+                        ctx.link().send_message(Msg::Step);
+                    }
+                    Action::Reset => {
+                        ctx.link().send_message(Msg::Reset);
+                    }
+                    Action::ToggleAutoPlay => {
+                        ctx.link().send_message(Msg::ToggleAutoPlay);
+                    }
+                    Action::ToggleHelp => {
+                        self.show_help_modal = !self.show_help_modal;
+                    }
+                    Action::PreviousProgram => {
+                        let count = ProgramManager::get_program_count();
+                        if count > 0 {
+                            let new_index = if self.current_program == 0
+                                || self.current_program == usize::MAX
+                            {
+                                count - 1
+                            } else {
+                                self.current_program - 1
+                            };
+                            ctx.link().send_message(Msg::SelectProgram(new_index));
+                        }
+                    }
+                    Action::NextProgram => {
+                        let count = ProgramManager::get_program_count();
+                        if count > 0 {
+                            let new_index = if self.current_program == usize::MAX {
+                                0
+                            } else {
+                                (self.current_program + 1) % count
+                            };
+                            ctx.link().send_message(Msg::SelectProgram(new_index));
+                        }
+                    }
+                    Action::ScrollUp => {
+                        ctx.link().send_message(Msg::ScrollUp);
+                    }
+                    Action::ScrollDown => {
+                        ctx.link().send_message(Msg::ScrollDown);
+                    }
+                    Action::Quit => {
+                        web_sys::console::log_1(
+                            &"Quit action received. (No direct equivalent in web app)".into(),
+                        );
+                    }
+                }
+
+                true
+            }
+            Msg::Step => {
+                if self.machine.is_halted() {
+                    self.message = "Machine is halted. Reset to continue.".to_string();
+                    self.auto_play = false;
+                    self.last_transition = None;
+                } else {
+                    let last_head_positions = self.machine.get_head_positions().to_vec();
+                    let last_tape_lengths: Vec<usize> =
+                        self.machine.get_tapes().iter().map(|t| t.len()).collect();
+
+                    // Store the current state as previous state before stepping
+                    self.previous_state = self.machine.get_state().to_string();
+
+                    // Get the transition that will be executed before stepping
+                    self.last_transition = self.machine.get_current_transition().cloned();
+
+                    match self.machine.step() {
+                        ExecutionResult::Continue => {
+                            self.message =
+                                format!("Step {} completed", self.machine.get_step_count());
+                        }
+                        ExecutionResult::Halt => {
+                            self.message = "Machine halted".to_string();
+                            self.auto_play = false;
+                        }
+                        ExecutionResult::Error(e) => {
+                            self.message = format!("Error: {}", e);
+                            self.auto_play = false;
+                            self.last_transition = None;
+                        }
+                    }
+
+                    // let new_head_positions = self.machine.get_head_positions().to_vec();
+                    let new_tape_lengths: Vec<usize> =
+                        self.machine.get_tapes().iter().map(|t| t.len()).collect();
+
+                    if let Some(transition) = &self.last_transition {
+                        for i in 0..last_head_positions.len() {
+                            // web_sys::console::log_1(
+                            //     &format!(
+                            //         "{i} = {:?}, {new_tape_lengths:?} = {last_tape_lengths:?}",
+                            //         transition.directions[i]
+                            //     )
+                            //     .into(),
+                            // );
+
+                            // Check if tape expanded to the left (length increased)
+                            if transition.directions[i] == Direction::Left
+                                && new_tape_lengths[i] > last_tape_lengths[i]
+                            {
+                                self.tape_left_offsets[i] += 1;
+                            }
+                        }
+                    }
+                }
+                true
+            }
+            Msg::Reset => {
+                self.machine.reset();
+                self.message = "Machine reset".to_string();
+                self.auto_play = false;
+                self.last_transition = None;
+                self.tape_left_offsets = vec![0; self.machine.tapes.len()];
+                self.previous_state = self.machine.get_initial_state().to_string();
+                true
+            }
+            Msg::ToggleAutoPlay => {
+                self.auto_play = !self.auto_play;
+                self.message = format!(
+                    "Auto-play {}",
+                    if self.auto_play {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    }
+                );
+
+                if self.auto_play {
+                    let link = ctx.link().clone();
+                    wasm_bindgen_futures::spawn_local(async move {
+                        gloo_timers::future::TimeoutFuture::new(500).await;
+                        link.send_message(Msg::AutoStep);
+                    });
+                }
+                true
+            }
+            Msg::SelectProgram(index) => {
+                if index != self.current_program {
+                    self.current_program = index;
+                    let program = ProgramManager::get_program_by_index(index).unwrap();
+                    self.machine = TuringMachine::new(&program);
+                    self.editor_text = ProgramManager::get_program_text_by_index(index)
+                        .unwrap_or("")
+                        .into();
+
+                    self.auto_play = false;
+                    self.is_program_ready = true;
+                    self.current_program_def = program.clone();
+                    self.last_transition = None;
+                    self.previous_state = program.initial_state.clone();
+                    self.message = "".to_string();
+                    true
+                } else {
+                    false
+                }
+            }
+            Msg::AutoStep => {
+                if self.auto_play && !self.machine.is_halted() {
+                    ctx.link().send_message(Msg::Step);
+
+                    let link = ctx.link().clone();
+                    let speed = self.speed;
+                    wasm_bindgen_futures::spawn_local(async move {
+                        gloo_timers::future::TimeoutFuture::new(speed.try_into().unwrap()).await;
+                        link.send_message(Msg::AutoStep);
+                    });
+                }
+                true
+            }
+            Msg::LoadCustomProgram(program) => {
+                self.machine = TuringMachine::new(&program);
+                self.auto_play = false;
+                self.is_program_ready = true;
+                self.current_program = usize::MAX; // Indicate custom program
+                self.current_program_def = program.clone();
+                self.last_transition = None;
+                self.previous_state = program.initial_state.clone();
+                self.message = "".to_string();
+                true
+            }
+            Msg::EditorError(error) => {
+                self.message = format!("Program error: {}", error);
+                self.is_program_ready = false;
+                true
+            }
+            Msg::UpdateEditorText(text) => {
+                if self.current_program != usize::MAX {
+                    if let Ok(canonical_text) =
+                        ProgramManager::get_program_text_by_index(self.current_program)
+                    {
+                        if text != canonical_text {
+                            self.current_program = usize::MAX;
+                        }
+                    } else {
+                        self.current_program = usize::MAX;
+                    }
+                }
+                self.editor_text = text;
+                true
+            }
+            Msg::SetSpeed(speed) => {
+                self.speed = speed;
+                true
+            }
+            Msg::ScrollUp => {
+                if self.scroll_offset > 0 {
+                    self.scroll_offset -= 1;
+                }
+                true
+            }
+            Msg::ScrollDown => {
+                // Find the maximum tape length
+                let max_tape_len = self
+                    .machine
+                    .get_tapes()
+                    .iter()
+                    .map(|tape| tape.len())
+                    .max()
+                    .unwrap_or(0);
+
+                // Assuming a visible window of 10 characters for simplicity
+                let visible_window_size = 10;
+
+                if self.scroll_offset < max_tape_len.saturating_sub(visible_window_size) {
+                    self.scroll_offset += 1;
+                }
+                true
+            }
+            Msg::ToggleHelpModal => {
+                self.show_help_modal = !self.show_help_modal;
+                true
+            }
+        }
+    }
+
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let link = ctx.link();
+        let help_text_items = self.keymap.items.iter().map(|(_, item)| {
+            html! { <li><kbd class="kbd">{ item.keys.join(", ") }</kbd>{ format!(": {}", item.description) }</li> }
+        }).collect::<Html>();
+
+        html! {
+                <main class="main-layout">
+                    <div class="left-panel">
+                        <div class="editor-section card card-compact bg-base-100">
+                            <div class="card-body">
+                                <div class="editor-header">
+                                    <h3 class="card-title">{"Program Editor"}</h3>
+                                    <ShareButton
+                                        program_name={self.current_program_def.name.clone()}
+                                        program_code={self.editor_text.clone()}
+                                        is_enabled={self.is_program_ready}
+                                    />
+                                </div>
+                                <ProgramEditor
+                                    program_text={self.editor_text.clone()}
+                                    is_ready={self.is_program_ready}
+                                    on_program_submit={link.callback(Msg::LoadCustomProgram)}
+                                    on_error={link.callback(Msg::EditorError)}
+                                    on_text_change={link.callback(Msg::UpdateEditorText)}
+                                    current_program={self.current_program}
+                                    on_select_program={link.callback(Msg::SelectProgram)}
+                                    program_name={self.current_program_def.name.clone()}
+                                />
+                            </div>
+                        </div>
+                                                  <div class="help-section card card-compact bg-base-100">
+                            <div class="card-body">
+                                <h3 class="card-title">{"Keyboard Shortcuts"}</h3>
+                                <ul>{ help_text_items }</ul>
+                                { if self.show_help_modal { self.view_help_modal(ctx) } else { html!{} } }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="right-panel">
+                        <div class="visualization-section">
+                            <div class="tape-and-state-section card card-compact bg-base-100">
+                                <div class="card-body">
+                                    <TapeView
+                                        tapes={self.machine.get_tapes().to_vec()}
+                                        head_positions={self.machine.get_head_positions().to_vec()}
+                                        auto_play={self.auto_play}
+                                        is_halted={self.machine.is_halted()}
+                                        is_program_ready={self.is_program_ready}
+                                        blank_symbol={self.machine.get_blank_symbol()}
+                                        state={self.machine.get_state().to_string()}
+                                        step_count={self.machine.get_step_count()}
+                                        current_symbols={self.machine.get_current_symbols()}
+                                        on_step={link.callback(|_| Msg::Step)}
+                                        on_reset={link.callback(|_| Msg::Reset)}
+                                        on_toggle_auto={link.callback(|_| Msg::ToggleAutoPlay)}
+                                        speed={self.speed}
+                                        on_speed_change={link.callback(|speed: u64| Msg::SetSpeed(speed))}
+                                        tape_left_offsets={self.tape_left_offsets.clone()}
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="graph-section card card-compact bg-base-100">
+                                <div class="card-body">
+                                    <h3 class="card-title">{"State Graph"}</h3>
+                                    <GraphView
+                                        program={self.current_program_def.clone()}
+                                        current_state={self.machine.get_state().to_string()}
+                                        previous_state={self.previous_state.clone()}
+                                        last_transition={self.last_transition.clone()}
+                                        step_count={self.machine.get_step_count()}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </main>
+        }
+    }
+}

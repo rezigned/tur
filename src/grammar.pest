@@ -1,0 +1,93 @@
+// =============================================================================
+// MAIN PROGRAM STRUCTURE
+// =============================================================================
+program = {
+    SOI
+    ~ (
+          (LEADING* ~ name)
+        | (LEADING+ ~ head)
+        | (LEADING+ ~ heads)
+        | (LEADING+ ~ blank)
+        | (LEADING+ ~ tape)
+        | (LEADING+ ~ tapes)
+        | (LEADING+ ~ states)
+        | (LEADING+ ~ rules)
+    )*
+    ~ EOI
+}
+
+// =============================================================================
+// TOP-LEVEL SECTIONS
+// =============================================================================
+name      = { "name:" ~ string }
+head      = { "head:" ~ index }
+heads     = { "heads:" ~ "[" ~ index ~ ("," ~ index)* ~ "]" }
+blank     = { "blank:" ~ symbol }
+tape      = { "tape:" ~ tape_line }
+tapes     = ${ "tapes:" ~ tape_list }
+tape_list = _{ (NEWLINE ~ INDENT ~ tape_line)+ }
+tape_line = _{ ("[" ~ symbols ~ "]") | symbols }
+
+// =============================================================================
+// STATES SECTION
+// =============================================================================
+states       = ${ "states:" ~ states_block }
+states_block = _{
+    (NEWLINE ~ INDENT ~ state_start)? ~ (NEWLINE ~ INDENT ~ state_stop)?
+}
+state_start  =  { "start:" ~ state }
+state_stop   =  { "stop:" ~ state ~ ("," ~ state)* }
+
+// =============================================================================
+// TRANSITIONS SECTION
+// =============================================================================
+rules           = ${ "rules:" ~ transition_block ~ last_transition_block? }
+transition_block      = _{ block_start ~ (comment | transition+) ~ block_end ~ transition_block* }
+transition            = ${ state ~ ":" ~ actions+ }
+last_transition_block = _{ block_start ~ (comment | last_transition) ~ block_end }
+last_transition       = ${ state ~ ":" }
+
+// =============================================================================
+// ACTIONS AND TRANSITIONS
+// =============================================================================
+actions            = _{ block_start ~ (comment | action+) ~ trailing_comment? ~ block_end }
+action             = !{ (multi_tape_action | single_tape_action) }
+multi_tape_action  =  { multi_tape_symbols ~ "->" ~ multi_tape_symbols ~ "," ~ directions ~ "," ~ state }
+multi_tape_symbols =  { "[" ~ symbol ~ ("," ~ symbol)* ~ "]" }
+single_tape_action =  { symbol ~ ("->" ~ symbol)? ~ "," ~ direction ~ "," ~ state }
+directions         =  { "[" ~ direction ~ ("," ~ direction)* ~ "]" }
+direction          =  { "<" | ">" | "-" | "L" | "R" | "S" }
+
+// =============================================================================
+// BLOCK STRUCTURE (INDENTATION) - RESTORED
+// =============================================================================
+block_start = _{ NEWLINE ~ PEEK_ALL ~ PUSH(INDENT) }
+block_end   = _{ DROP }
+
+// =============================================================================
+// BASIC ELEMENTS
+// =============================================================================
+symbols       = !{ symbol ~ (separator ~ symbol)* }
+symbol        = @{
+    "'" ~ ANY ~ "'"
+  | (!reserved_char ~ ANY)
+}
+separator     = _{ ("," | "|") }
+reserved_char =  { "#" | " " | "," | ">" | "<" }
+state         = ${ ident }
+string        = @{ (!NEWLINE ~ ANY)+ }
+ident         =  { !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_" | "-")+ }
+index         =  { ASCII_DIGIT+ }
+
+// =============================================================================
+// COMMENTS
+// =============================================================================
+comment          = _{ "#" ~ (!NEWLINE ~ ANY)* }
+trailing_comment = _{ WHITESPACE+ ~ "#" ~ (!NEWLINE ~ ANY)* }
+
+// =============================================================================
+// WHITESPACE AND INDENTATION
+// =============================================================================
+LEADING    =  { NEWLINE | comment }
+INDENT     = _{ ("  " | "\t")+ }
+WHITESPACE = _{ " " }

@@ -1,0 +1,13 @@
+name: Busy Beaver 3-State
+tape: _
+rules:
+  A:
+    _ -> 1, R, B
+    1 -> 1, L, C
+  B:
+    _ -> 1, L, A
+    1 -> 1, R, B
+  C:
+    _ -> 1, L, B
+    1 -> 1, R, halt
+  halt:

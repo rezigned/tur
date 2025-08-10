@@ -1,0 +1,25 @@
+name: Multi-Tape Compare
+heads: [0, 0, 0]
+tapes:
+  [a, b, c]
+  [a, b, c]
+  [-]
+rules:
+  start:
+    [a, a, -] -> [a, a, -], [R, R, S], start
+    [b, b, -] -> [b, b, -], [R, R, S], start
+    [c, c, -] -> [c, c, -], [R, R, S], start
+    [-, -, -] -> [-, -, Y], [S, S, S], halt
+    [a, b, -] -> [a, b, N], [S, S, S], halt
+    [a, c, -] -> [a, c, N], [S, S, S], halt
+    [b, a, -] -> [b, a, N], [S, S, S], halt
+    [b, c, -] -> [b, c, N], [S, S, S], halt
+    [c, a, -] -> [c, a, N], [S, S, S], halt
+    [c, b, -] -> [c, b, N], [S, S, S], halt
+    [a, -, -] -> [a, -, N], [S, S, S], halt
+    [b, -, -] -> [b, -, N], [S, S, S], halt
+    [c, -, -] -> [c, -, N], [S, S, S], halt
+    [-, a, -] -> [-, a, N], [S, S, S], halt
+    [-, b, -] -> [-, b, N], [S, S, S], halt
+    [-, c, -] -> [-, c, N], [S, S, S], halt
+  halt:

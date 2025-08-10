@@ -1,0 +1,41 @@
+name: Palindrome Checker
+tape: a, b, b, a
+rules:
+  start:
+    a -> X, R, find_end_a  # Mark first a and find matching last a
+    b -> Y, R, find_end_b  # Mark first b and find matching last b
+    _ -> _, S, accept      # Empty string or single char - palindrome
+    X -> X, R, start      # Skip already marked symbols
+    Y -> Y, R, start
+  find_end_a:
+    a -> a, R, find_end_a
+    b -> b, R, find_end_a
+    X -> X, R, find_end_a
+    Y -> Y, R, find_end_a
+    _ -> _, L, check_last_a  # Found end, check last symbol
+  find_end_b:
+    a -> a, R, find_end_b
+    b -> b, R, find_end_b
+    X -> X, R, find_end_b
+    Y -> Y, R, find_end_b
+    _ -> _, L, check_last_b  # Found end, check last symbol
+  check_last_a:
+    a -> X, L, return_start  # Match found, mark and return
+    b -> b, S, reject        # No match - not palindrome
+    X -> X, L, check_last_a  # Skip already marked, continue left
+    Y -> Y, L, check_last_a
+  check_last_b:
+    b -> Y, L, return_start  # Match found, mark and return
+    a -> a, S, reject        # No match - not palindrome
+    X -> X, L, check_last_b  # Skip already marked, continue left
+    Y -> Y, L, check_last_b
+  return_start:
+    a -> a, L, return_start
+    b -> b, L, return_start
+    X -> X, L, return_start
+    Y -> Y, L, return_start
+    _ -> _, R, start         # Back at start, check next pair
+  accept:
+    # Machine halts - INPUT IS PALINDROME
+  reject:
+    # Machine halts - INPUT IS NOT PALINDROME

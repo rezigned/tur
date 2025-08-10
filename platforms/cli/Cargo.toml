@@ -1,0 +1,19 @@
+[package]
+name = "tur-cli"
+version = "0.0.1"
+description = "Command-line interface for Turing machine simulator"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "tur-cli"
+path = "src/main.rs"
+
+[dependencies]
+tur = { path = "../../" }
+clap = { version = "4.0", features = ["derive"] }
