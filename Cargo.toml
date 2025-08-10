@@ -3,7 +3,6 @@ members = [
     "platforms/tui",
     "platforms/web",
     "platforms/cli",
-    "platforms/action"
 ]
 resolver = "2"
 

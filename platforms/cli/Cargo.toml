@@ -15,5 +15,5 @@ name = "tur-cli"
 path = "src/main.rs"
 
 [dependencies]
-tur = { path = "../../" }
+tur = { path = "../../", version = "0.0.1" }
 clap = { version = "4.0", features = ["derive"] }
