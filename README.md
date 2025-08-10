@@ -81,7 +81,7 @@ rules:
 ```
 
 > [!NOTE]
-> The first state defined in the `rules:` section is automatically considered the start state. In the examples above, `start` is the initial state because it appears first.
+> The first state defined in the `rules:` section is automatically considered the start state. In the examples above, `state_a` is the initial state because it appears first.
 
 ### Transition Rules
 

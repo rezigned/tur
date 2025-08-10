@@ -13,6 +13,8 @@ pub struct ProgramEditorProps {
     pub current_program: usize,
     pub on_select_program: Callback<usize>,
     pub program_name: String,
+    pub show_help_modal_from_parent: bool,
+    pub on_close_help_modal: Callback<()>,
 }
 
 pub enum ProgramEditorMsg {
@@ -45,25 +47,29 @@ impl Component for ProgramEditor {
     }
 
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
-        // Only update when switching programs, not during user typing
+        let mut should_render = false;
+
         if old_props.current_program != ctx.props().current_program {
             self.program_text = ctx.props().program_text.clone();
             self.is_valid = ctx.props().is_ready;
             self.parse_error = None;
 
-            // Cancel any pending validation from previous edits
             if let Some(timeout) = self.validation_timeout.take() {
                 timeout.cancel();
             }
 
-            // Update CodeMirror with new program content
             let escaped_value = serde_json::to_string(&self.program_text).unwrap();
             js_sys::eval(&format!("window.updateCodeMirrorValue({})", escaped_value)).unwrap();
 
-            true
-        } else {
-            false
+            should_render = true;
         }
+
+        if old_props.show_help_modal_from_parent != ctx.props().show_help_modal_from_parent {
+            self.show_help_modal = ctx.props().show_help_modal_from_parent;
+            should_render = true;
+        }
+
+        should_render
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -141,6 +147,7 @@ Please reduce the program size.",
             }
             ProgramEditorMsg::CloseHelpModal => {
                 self.show_help_modal = false;
+                ctx.props().on_close_help_modal.emit(());
                 true
             }
         }
@@ -285,7 +292,6 @@ rules:
                                     <ul class="help-list">
                                         <li class="help-list-item">{"Directions: "} <code>{"L"}</code> {" (left), "} <code>{"R"}</code> {" (right), "} <code>{"S"}</code> {" (stay)"}</li>
                                         <li class="help-list-item">{"Use "} <code>{"_"}</code> {" as a special symbol to match/write the program's blank symbol (e.g., if blank is ' ', then '_' matches ' ')"}</li>
-                                        <li class="help-list-item">{"State "} <code>{"halt"}</code> {" stops execution"}</li>
                                     </ul>
                                 </div>
                             </div>

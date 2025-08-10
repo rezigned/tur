@@ -524,6 +524,10 @@ body {
     color: var(--accent-color-hover);
 }
 
+.help-section li {
+  margin-bottom: 0.5rem;
+}
+
 .help-details {
     background: var(--surface-color);
     border: var(--border-width) solid var(--border-color);

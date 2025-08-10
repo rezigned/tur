@@ -21,7 +21,7 @@ pub enum Msg {
     SetSpeed(u64),
     ScrollUp,
     ScrollDown,
-    ToggleHelpModal,
+    HideProgramEditorHelp,
 }
 
 pub struct App {
@@ -38,7 +38,7 @@ pub struct App {
     scroll_offset: usize,
     _keyboard_listener: EventListener,
     keymap: Config<Action>,
-    show_help_modal: bool,
+    show_program_editor_help: bool,
     tape_left_offsets: Vec<usize>,
 }
 
@@ -68,22 +68,8 @@ impl App {
             scroll_offset: 0,
             _keyboard_listener: keyboard_listener,
             keymap: Action::keymap_config(),
-            show_help_modal: false,
+            show_program_editor_help: false,
             tape_left_offsets: vec![0; num_tapes],
-        }
-    }
-
-    fn view_help_modal(&self, ctx: &Context<Self>) -> Html {
-        html! {
-            <div class="modal modal-open">
-                <div class="modal-box">
-                    <h3 class="font-bold text-lg">{"Help"}</h3>
-                    <p class="py-4">{"This is a Turing machine simulator. You can write your own programs or use one of the examples. The machine can be controlled with the buttons or with the keyboard shortcuts."}</p>
-                    <div class="modal-action">
-                        <button class="btn" onclick={ctx.link().callback(|_| Msg::ToggleHelpModal)}>{ "Close" }</button>
-                    </div>
-                </div>
-            </div>
         }
     }
 }
@@ -158,7 +144,7 @@ impl Component for App {
                         ctx.link().send_message(Msg::ToggleAutoPlay);
                     }
                     Action::ToggleHelp => {
-                        self.show_help_modal = !self.show_help_modal;
+                        self.show_program_editor_help = !self.show_program_editor_help;
                     }
                     Action::PreviousProgram => {
                         let count = ProgramManager::get_program_count();
@@ -377,8 +363,9 @@ impl Component for App {
                 }
                 true
             }
-            Msg::ToggleHelpModal => {
-                self.show_help_modal = !self.show_help_modal;
+
+            Msg::HideProgramEditorHelp => {
+                self.show_program_editor_help = false;
                 true
             }
         }
@@ -412,6 +399,8 @@ impl Component for App {
                                     current_program={self.current_program}
                                     on_select_program={link.callback(Msg::SelectProgram)}
                                     program_name={self.current_program_def.name.clone()}
+                                    show_help_modal_from_parent={self.show_program_editor_help}
+                                    on_close_help_modal={link.callback(|_| Msg::HideProgramEditorHelp)}
                                 />
                             </div>
                         </div>
@@ -419,7 +408,6 @@ impl Component for App {
                             <div class="card-body">
                                 <h3 class="card-title">{"Keyboard Shortcuts"}</h3>
                                 <ul>{ help_text_items }</ul>
-                                { if self.show_help_modal { self.view_help_modal(ctx) } else { html!{} } }
                             </div>
                         </div>
                     </div>
