@@ -1,0 +1,73 @@
+# See https://book.leptos.dev/deployment/csr.html#github-pages
+name: Release to Github Pages
+
+on:
+  push:
+    branches: [main, deploy-github-pages]
+    paths:
+      - 'platforms/web/**'
+      - '.github/workflows/github-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write # for committing to gh-pages branch.
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  WASM_PATH: ./platforms/web
+
+jobs:
+  Github-Pages-Release:
+    defaults:
+      run:
+        working-directory: ${{ env.WASM_PATH }}
+
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4 # repo checkout
+
+      # Install Rust Nightly Toolchain, with Clippy & Rustfmt
+      - name: Install nightly Rust
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Add WASM target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Download and install Trunk binary
+        run: wget -qO- https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
+
+      - name: Build with Trunk
+        # The behavior of the --public-url argument has changed: it no longer includes a leading '/'.
+        # We have to specify it explicitly. See https://github.com/trunk-rs/trunk/issues/668
+        run: ./trunk build --release --public-url "/${GITHUB_REPOSITORY#*/}"
+
+      # Deploy with Github Static Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+          # token:
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload dist dir
+          path: "${{ env.WASM_PATH }}/dist"
+
+      - name: Deploy to GitHub Pages 🚀
+        id: deployment
+        uses: actions/deploy-pages@v4
