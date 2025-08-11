@@ -4,7 +4,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, List, ListItem, Padding, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, List, ListItem, Padding, Paragraph, Wrap},
     Frame,
 };
 use tur::{
@@ -490,6 +490,7 @@ fn section<'a>(title: &'a str, content: Vec<Line<'a>>) -> Paragraph<'a> {
 fn block(title: &str) -> Block {
     Block::default()
         .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
         .title(format!(" {title} "))
         .padding(BLOCK_PADDING)
 }
