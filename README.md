@@ -8,6 +8,25 @@
 
 **Tur** is a language for defining and executing Turing machines, complete with parser, interpreter, and multi-platform visualization tools.
 
+<table>
+  <thead>
+    <tr>
+      <th width="500px">Web</th>
+      <th width="500px">TUI</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <a href="https://rezigned.com/tur"><img src=".github/assets/tur-web.png" /></a>
+      </td>
+      <td>
+        <img src=".github/assets/tur-tui.png" />
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ## Language Overview
 
 Tur (`.tur` files) provides a clean, readable syntax for defining both single-tape and multi-tape Turing machines. The language includes:
