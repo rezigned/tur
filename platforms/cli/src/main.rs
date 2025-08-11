@@ -23,7 +23,13 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    let program = ProgramLoader::load_program(Path::new(&cli.program)).unwrap();
+    let program = match ProgramLoader::load_program(Path::new(&cli.program)) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Error loading program: {}", e);
+            std::process::exit(1);
+        }
+    };
     let mut machine = TuringMachine::new(&program);
 
     for (i, input_str) in cli.input.iter().enumerate() {

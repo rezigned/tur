@@ -1,20 +1,27 @@
-name: Multi-Tape Addition
-heads: [0, 0, 0]
+name: Multi-Tape Addition (LSB)
 tapes:
-  [1, 0, 1]
-  [1, 1, 0]
-  [-, -, -]
+  [1, 1]
+  [1, 0]
+  [_, _]
 rules:
   start:
-    [1, 1, -] -> [1, 1, 0], [R, R, R], carry
-    [1, 0, -] -> [1, 0, 1], [R, R, R], start
-    [0, 1, -] -> [0, 1, 1], [R, R, R], start
-    [0, 0, -] -> [0, 0, 0], [R, R, R], start
-    [-, -, -] -> [-, -, -], [S, S, S], halt
+    [1, 1, _] -> [1, 1, 0], [R, R, R], carry   # 1+1=0 with carry
+    [1, 0, _] -> [1, 0, 1], [R, R, R], start   # 1+0=1 no carry
+    [0, 1, _] -> [0, 1, 1], [R, R, R], start   # 0+1=1 no carry
+    [0, 0, _] -> [0, 0, 0], [R, R, R], start   # 0+0=0 no carry
+    [1, _, _] -> [1, _, 1], [R, R, R], start   # 1+blank=1
+    [_, 1, _] -> [_, 1, 1], [R, R, R], start   # blank+1=1
+    [0, _, _] -> [0, _, 0], [R, R, R], start   # 0+blank=0
+    [_, 0, _] -> [_, 0, 0], [R, R, R], start   # blank+0=0
+    [_, _, _] -> [_, _, _], [S, S, S], halt    # All done
   carry:
-    [1, 1, -] -> [1, 1, 1], [R, R, R], carry
-    [1, 0, -] -> [1, 0, 0], [R, R, R], carry
-    [0, 1, -] -> [0, 1, 0], [R, R, R], carry
-    [0, 0, -] -> [0, 0, 1], [R, R, R], start
-    [-, -, -] -> [-, -, 1], [S, S, S], halt
+    [1, 1, _] -> [1, 1, 1], [R, R, R], carry   # 1+1+carry=1 with carry
+    [1, 0, _] -> [1, 0, 0], [R, R, R], carry   # 1+0+carry=0 with carry
+    [0, 1, _] -> [0, 1, 0], [R, R, R], carry   # 0+1+carry=0 with carry
+    [0, 0, _] -> [0, 0, 1], [R, R, R], start   # 0+0+carry=1 no carry
+    [1, _, _] -> [1, _, 0], [R, R, R], carry   # 1+blank+carry=0 with carry
+    [_, 1, _] -> [_, 1, 0], [R, R, R], carry   # blank+1+carry=0 with carry
+    [0, _, _] -> [0, _, 1], [R, R, R], start   # 0+blank+carry=1 no carry
+    [_, 0, _] -> [_, 0, 1], [R, R, R], start   # blank+0+carry=1 no carry
+    [_, _, _] -> [_, _, 1], [S, S, S], halt    # Just carry remaining
   halt:
