@@ -1,13 +1,18 @@
 use action::Action;
 use keymap::{Config, KeyMapConfig};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Modifier, Style},
-    text::{Line, Span},
+    text::{Line, Span, Text},
     widgets::{Block, Borders, List, ListItem, Padding, Paragraph, Wrap},
     Frame,
 };
-use tur::{ExecutionResult, Program, ProgramLoader, ProgramManager, TuringMachine};
+use tur::{
+    types::{DEFAULT_BLANK_SYMBOL, INPUT_BLANK_SYMBOL},
+    ExecutionResult, Program, ProgramLoader, ProgramManager, TuringMachine,
+};
+
+const BLOCK_PADDING: Padding = Padding::new(1, 1, 0, 0);
 
 pub struct App {
     machine: TuringMachine,
@@ -32,7 +37,7 @@ impl App {
             current_program_index: 0,
             auto_play: false,
             scroll_offset: 0,
-            message: "Welcome to Turing Machine TUI! Press 'h' for help.".to_string(),
+            message: "Press 'h' for help.".to_string(),
             show_help: false,
             program_loaded_from_source: false,
         }
@@ -56,37 +61,65 @@ impl App {
     }
 
     pub fn render(&mut self, f: &mut Frame) {
-        let tape_count = self.machine.get_tapes().len();
+        let margin_size = Margin::new(1, 0); // Define margin size
+        let inner_area = f.area().inner(margin_size);
 
-        // Dynamic layout based on number of tapes
-        let tape_height = if tape_count == 1 {
-            5
-        } else {
-            (tape_count * 3 + 2).min(12)
-        };
-
-        let chunks = Layout::default()
+        // Main vertical chunks: Program Info, Middle (Tapes + State/Rules), Status
+        let main_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),                  // Program info
-                Constraint::Length(tape_height as u16), // Tape display (adaptive)
-                Constraint::Length(3),                  // Machine state
-                Constraint::Min(5),                     // State rules/help
-                Constraint::Length(3),                  // Status/controls
+                Constraint::Length(5), // Program info (fixed height + margin)
+                Constraint::Min(0),    // Middle section (flexible height)
+                Constraint::Length(3), // Status/controls (fixed height + margin)
             ])
-            .split(f.area());
+            .split(inner_area);
 
-        self.render_program_info(f, chunks[0]);
-        self.render_tapes(f, chunks[1]);
-        self.render_machine_state(f, chunks[2]);
+        // Apply margin to Program Info
+        let program_info_area = main_chunks[0];
+        self.render_program_info(f, program_info_area);
 
+        // Middle horizontal chunks: Tapes (left), State + Rules (right)
+        let middle_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(50), // Tapes (takes 50% width)
+                Constraint::Length(1),      // Machine State + State Rules (takes 50% width)
+                Constraint::Percentage(50), // Tapes (takes 50% width)
+            ])
+            .split(main_chunks[1]);
+
+        // Render Tapes in the left middle chunk with margin
+        let left_chunk = middle_chunks[0];
+        let tape_area = Layout::default()
+            .direction(Direction::Vertical)
+            // .constraints([Constraint::Length(tape_section_height as u16), Constraint::Min(0)])
+            .constraints([Constraint::Percentage(100)])
+            .split(left_chunk)[0];
+        self.render_tapes(f, tape_area);
+
+        // Right vertical chunks: Machine State, State Rules/Help
+        let right_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3), // Machine State (fixed height)
+                Constraint::Min(0),    // State Rules/Help (flexible height)
+            ])
+            .split(middle_chunks[2]);
+
+        // Render Machine State in the top right middle chunk with margin
+        let machine_state_area = right_chunks[0];
+        self.render_machine_state(f, machine_state_area);
+
+        // Render State Rules or Help in the bottom right middle chunk with margin
+        let rules_help_area = right_chunks[1];
         if self.show_help {
-            self.render_help(f, chunks[3]);
+            self.render_help(f, rules_help_area);
         } else {
-            self.render_rules(f, chunks[3]);
+            self.render_rules(f, rules_help_area);
         }
 
-        self.render_status(f, chunks[4]);
+        // Render Status in the bottom main chunk with margin
+        self.render_status(f, main_chunks[2]);
     }
 
     fn render_program_info(&self, f: &mut Frame, area: Rect) {
@@ -134,12 +167,8 @@ impl App {
             Span::raw(info.transition_count.to_string()),
         ]));
 
-        let paragraph = Paragraph::new(text).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Program Information")
-                .padding(Padding::horizontal(1)),
-        );
+        let paragraph = Paragraph::new(text)
+            .block(block("Tur - Turing Machine Language (TUI)").title_alignment(Alignment::Center));
 
         f.render_widget(paragraph, area);
     }
@@ -162,16 +191,14 @@ impl App {
 
             // Create tape visualization
             let mut tape_spans = Vec::new();
-            let visible_start = self.scroll_offset;
-            let visible_end =
-                (visible_start + (area.width as usize).saturating_sub(10)).min(tape.len());
+            for (i, &symbol) in tape.iter().enumerate() {
+                // Fix span render blank char incorrectly (it renders in a new line).
+                let symbol = if symbol == DEFAULT_BLANK_SYMBOL {
+                    INPUT_BLANK_SYMBOL
+                } else {
+                    symbol
+                };
 
-            for (i, &symbol) in tape
-                .iter()
-                .enumerate()
-                .skip(visible_start)
-                .take(visible_end - visible_start)
-            {
                 if i == head_pos {
                     // For head position, use brackets to make highlighting more visible
                     tape_spans.push(Span::styled(
@@ -212,14 +239,7 @@ impl App {
         }
 
         // Always use "Tapes" title for consistency
-        let paragraph = Paragraph::new(text_lines)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Tapes")
-                    .padding(Padding::horizontal(1)),
-            )
-            .wrap(Wrap { trim: false });
+        let paragraph = section("Tapes", text_lines).wrap(Wrap { trim: false });
 
         f.render_widget(paragraph, area);
     }
@@ -265,12 +285,7 @@ impl App {
             Span::styled("]", Style::default().fg(Color::Cyan)),
         ]));
 
-        let paragraph = Paragraph::new(text).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Machine State")
-                .padding(Padding::horizontal(1)),
-        );
+        let paragraph = section("Machine State", text);
 
         f.render_widget(paragraph, area);
     }
@@ -324,12 +339,7 @@ impl App {
 
         // Always use "State Information" for consistency
         let list = List::new(items)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("State Information")
-                    .padding(Padding::horizontal(1)),
-            )
+            .block(block("State Information"))
             .style(Style::default().fg(Color::White));
 
         f.render_widget(list, area);
@@ -359,28 +369,34 @@ impl App {
             Line::from("  Use '_' as a special symbol to match/write the program's blank symbol"),
         ];
 
-        let paragraph = Paragraph::new(help_text).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Help")
-                .padding(Padding::horizontal(1)),
-        );
+        let paragraph = section("Help", help_text);
 
         f.render_widget(paragraph, area);
     }
 
     fn render_status(&self, f: &mut Frame, area: Rect) {
-        let auto_play_status = if self.auto_play { "ON" } else { "OFF" };
-        let status_line = format!("Auto-play: {} | {}", auto_play_status, self.message);
+        let repo = "@rezigned/tur";
+        let outer = block("Status");
+        let inner = outer.inner(area);
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Fill(1), Constraint::Length(repo.len() as u16)])
+            .split(inner);
 
-        let paragraph = Paragraph::new(status_line).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Status")
-                .padding(Padding::horizontal(1)),
+        let auto_play_status = if self.auto_play { "ON" } else { "OFF" };
+        let status = Line::from(vec![
+            Span::raw("Auto-play: "),
+            Span::styled(auto_play_status, Style::default().fg(Color::Yellow)),
+            Span::raw(format!(" | {}", self.message)),
+        ]);
+
+        let social = Text::from(
+            Line::from(Span::styled(repo, Style::default().fg(Color::Yellow))).right_aligned(),
         );
 
-        f.render_widget(paragraph, area);
+        f.render_widget(outer, area);
+        f.render_widget(status, chunks[0]);
+        f.render_widget(social, chunks[1]);
     }
 
     pub fn step_machine(&mut self) {
@@ -465,4 +481,15 @@ impl App {
     pub fn toggle_help(&mut self) {
         self.show_help = !self.show_help;
     }
+}
+
+fn section<'a>(title: &'a str, content: Vec<Line<'a>>) -> Paragraph<'a> {
+    Paragraph::new(content).block(block(title))
+}
+
+fn block(title: &str) -> Block {
+    Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" {title} "))
+        .padding(BLOCK_PADDING)
 }
