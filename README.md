@@ -1,9 +1,12 @@
 # Tur - Turing Machine Language
+
+[![Crates.io](https://img.shields.io/crates/v/tur.svg)](https://crates.io/crates/tur) [![Docs.rs](https://docs.rs/tur/badge.svg)](https://docs.rs/tur) [![CI](https://github.com/rezigned/tur/actions/workflows/ci.yml/badge.svg)](https://github.com/rezigned/tur/actions/workflows/ci.yml)
+
 <p align="center">
   <img src=".github/tur-logo.png" width="400" />
 </p>
 
-**Tur** is a domain-specific language for defining and executing Turing machines, complete with parser, interpreter, and multi-platform visualization tools.
+**Tur** is a language for defining and executing Turing machines, complete with parser, interpreter, and multi-platform visualization tools.
 
 ## Language Overview
 
