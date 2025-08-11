@@ -3,7 +3,7 @@ name: Release to Github Pages
 
 on:
   push:
-    branches: [main, deploy-github-pages]
+    branches: [main]
     paths:
       - 'platforms/web/**'
       - '.github/workflows/github-pages.yml'

@@ -183,6 +183,7 @@ Please reduce the program size.",
         html! {
             <div class="program-editor">
                 <ProgramSelector
+                    key={ctx.props().current_program.to_string()}
                     current_program={ctx.props().current_program}
                     on_select={ctx.props().on_select_program.clone()}
                 />
