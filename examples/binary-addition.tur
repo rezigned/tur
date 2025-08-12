@@ -10,4 +10,7 @@ rules:
   s2:
     1 -> 0, L, s2
     0 -> 1, L, stop
+    $ -> 1, L, s3
+  s3:
+    _ -> $, R, stop
   stop:

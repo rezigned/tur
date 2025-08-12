@@ -9,7 +9,6 @@ use tur::ExecutionResult;
 #[clap(author, version, about, long_about = None, arg_required_else_help = true)]
 struct Cli {
     /// The Turing machine program file to execute
-    #[clap(short, long)]
     program: String,
 
     /// The input to the Turing machine
@@ -111,7 +110,7 @@ fn read_tape_inputs(inputs: &[String]) -> Result<Vec<String>, String> {
 
         for line in stdin.lock().lines() {
             match line {
-                Ok(content) => tape_inputs.push(content),
+                Ok(content) => tape_inputs.push(content.trim().to_string()),
                 Err(e) => return Err(format!("Error reading from stdin: {}", e)),
             }
         }
