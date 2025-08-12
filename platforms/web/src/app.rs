@@ -19,7 +19,6 @@ pub enum Msg {
     EditorError(String),
     UpdateEditorText(String),
     SetSpeed(u64),
-
     HideProgramEditorHelp,
 }
 
@@ -49,9 +48,10 @@ impl App {
         message: String,
         keyboard_listener: EventListener,
     ) -> Self {
-        let machine = TuringMachine::new(program);
         let initial_state = program.initial_state.clone();
-        let num_tapes = machine.get_tapes().len();
+        let current_program_def = program.clone();
+        let machine = TuringMachine::new(program);
+        let num_tapes = machine.tapes().len();
 
         Self {
             machine,
@@ -60,7 +60,7 @@ impl App {
             message,
             editor_text: program_text,
             is_program_ready: true,
-            current_program_def: program,
+            current_program_def,
             last_transition: None,
             previous_state: initial_state,
             speed: 500,
@@ -185,20 +185,19 @@ impl Component for App {
                     self.auto_play = false;
                     self.last_transition = None;
                 } else {
-                    let last_head_positions = self.machine.get_head_positions().to_vec();
+                    let last_head_positions = self.machine.head_positions().to_vec();
                     let last_tape_lengths: Vec<usize> =
-                        self.machine.get_tapes().iter().map(|t| t.len()).collect();
+                        self.machine.tapes().iter().map(|t| t.len()).collect();
 
                     // Store the current state as previous state before stepping
-                    self.previous_state = self.machine.get_state().to_string();
+                    self.previous_state = self.machine.state().to_string();
 
                     // Get the transition that will be executed before stepping
                     self.last_transition = self.machine.get_current_transition().cloned();
 
                     match self.machine.step() {
                         ExecutionResult::Continue => {
-                            self.message =
-                                format!("Step {} completed", self.machine.get_step_count());
+                            self.message = format!("Step {} completed", self.machine.step_count());
                         }
                         ExecutionResult::Halt => {
                             self.message = "Machine halted".to_string();
@@ -211,9 +210,9 @@ impl Component for App {
                         }
                     }
 
-                    // let new_head_positions = self.machine.get_head_positions().to_vec();
+                    // let new_head_positions = self.machine.head_positions().to_vec();
                     let new_tape_lengths: Vec<usize> =
-                        self.machine.get_tapes().iter().map(|t| t.len()).collect();
+                        self.machine.tapes().iter().map(|t| t.len()).collect();
 
                     if let Some(transition) = &self.last_transition {
                         for i in 0..last_head_positions.len() {
@@ -241,8 +240,8 @@ impl Component for App {
                 self.message = "Machine reset".to_string();
                 self.auto_play = false;
                 self.last_transition = None;
-                self.tape_left_offsets = vec![0; self.machine.tapes.len()];
-                self.previous_state = self.machine.get_initial_state().to_string();
+                self.tape_left_offsets = vec![0; self.machine.tapes().len()];
+                self.previous_state = self.machine.initial_state().to_string();
                 true
             }
             Msg::ToggleAutoPlay => {
@@ -269,7 +268,6 @@ impl Component for App {
                 if index != self.current_program {
                     self.current_program = index;
                     let program = ProgramManager::get_program_by_index(index).unwrap();
-                    self.machine = TuringMachine::new(program);
                     self.editor_text = ProgramManager::get_program_text_by_index(index)
                         .unwrap_or("")
                         .into();
@@ -279,6 +277,7 @@ impl Component for App {
                     self.current_program_def = program.clone();
                     self.last_transition = None;
                     self.previous_state = program.initial_state.clone();
+                    self.machine = TuringMachine::new(program);
                     self.message = "".to_string();
                     true
                 } else {
@@ -299,13 +298,13 @@ impl Component for App {
                 true
             }
             Msg::LoadCustomProgram(program) => {
-                self.machine = TuringMachine::new(program);
                 self.auto_play = false;
                 self.is_program_ready = true;
                 self.current_program = usize::MAX; // Indicate custom program
                 self.current_program_def = program.clone();
                 self.last_transition = None;
                 self.previous_state = program.initial_state.clone();
+                self.machine = TuringMachine::new(program);
                 self.message = "".to_string();
                 true
             }
@@ -387,14 +386,14 @@ impl Component for App {
                             <div class="tape-and-state-section card card-compact bg-base-100">
                                 <div class="card-body">
                                     <TapeView
-                                        tapes={self.machine.get_tapes().to_vec()}
-                                        head_positions={self.machine.get_head_positions().to_vec()}
+                                        tapes={self.machine.tapes().to_vec()}
+                                        head_positions={self.machine.head_positions().to_vec()}
                                         auto_play={self.auto_play}
                                         is_halted={self.machine.is_halted()}
                                         is_program_ready={self.is_program_ready}
-                                        blank_symbol={self.machine.get_blank_symbol()}
-                                        state={self.machine.get_state().to_string()}
-                                        step_count={self.machine.get_step_count()}
+                                        blank_symbol={self.machine.blank_symbol()}
+                                        state={self.machine.state().to_string()}
+                                        step_count={self.machine.step_count()}
                                         current_symbols={self.machine.get_current_symbols()}
                                         on_step={link.callback(|_| Msg::Step)}
                                         on_reset={link.callback(|_| Msg::Reset)}
@@ -411,10 +410,10 @@ impl Component for App {
                                     <h3 class="card-title">{"State Graph"}</h3>
                                     <GraphView
                                         program={self.current_program_def.clone()}
-                                        current_state={self.machine.get_state().to_string()}
+                                        current_state={self.machine.state().to_string()}
                                         previous_state={self.previous_state.clone()}
                                         last_transition={self.last_transition.clone()}
-                                        step_count={self.machine.get_step_count()}
+                                        step_count={self.machine.step_count()}
                                     />
                                 </div>
                             </div>

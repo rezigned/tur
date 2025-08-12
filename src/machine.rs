@@ -236,12 +236,12 @@ impl TuringMachine {
     }
 
     /// Returns the current state of the Turing Machine.
-    pub fn get_state(&self) -> &str {
+    pub fn state(&self) -> &str {
         &self.state
     }
 
     /// Returns the initial state of the Turing Machine.
-    pub fn get_initial_state(&self) -> &str {
+    pub fn initial_state(&self) -> &str {
         &self.initial_state
     }
 
@@ -255,7 +255,7 @@ impl TuringMachine {
     }
 
     /// Returns the total number of steps executed by the Turing Machine.
-    pub fn get_step_count(&self) -> usize {
+    pub fn step_count(&self) -> usize {
         self.step_count
     }
 
@@ -351,12 +351,12 @@ impl TuringMachine {
     }
 
     /// Returns a slice of the machine's tapes.
-    pub fn get_tapes(&self) -> &[Vec<char>] {
+    pub fn tapes(&self) -> &[Vec<char>] {
         &self.tapes
     }
 
     /// Returns a slice of the machine's head positions for all tapes.
-    pub fn get_head_positions(&self) -> &[usize] {
+    pub fn head_positions(&self) -> &[usize] {
         &self.head_positions
     }
 
@@ -423,7 +423,7 @@ impl TuringMachine {
     }
 
     /// Returns the blank symbol used by this Turing Machine.
-    pub fn get_blank_symbol(&self) -> char {
+    pub fn blank_symbol(&self) -> char {
         self.blank_symbol
     }
 
@@ -529,10 +529,10 @@ mod multi_tape_tests {
         let program = create_simple_multi_tape_program();
         let machine = TuringMachine::new(program);
 
-        assert_eq!(machine.get_state(), "start");
-        assert_eq!(machine.get_tapes(), &[vec!['a'], vec!['x']]);
-        assert_eq!(machine.get_head_positions(), &[0, 0]);
-        assert_eq!(machine.get_step_count(), 0);
+        assert_eq!(machine.state(), "start");
+        assert_eq!(machine.tapes(), &[vec!['a'], vec!['x']]);
+        assert_eq!(machine.head_positions(), &[0, 0]);
+        assert_eq!(machine.step_count(), 0);
     }
 
     #[test]
@@ -543,10 +543,10 @@ mod multi_tape_tests {
         let result = machine.step();
 
         assert_eq!(result, ExecutionResult::Continue);
-        assert_eq!(machine.get_state(), "halt");
-        assert_eq!(machine.get_tapes(), &[vec!['b', '-'], vec!['y', '-']]); // Tapes extended when moving right
-        assert_eq!(machine.get_head_positions(), &[1, 1]);
-        assert_eq!(machine.get_step_count(), 1);
+        assert_eq!(machine.state(), "halt");
+        assert_eq!(machine.tapes(), &[vec!['b', '-'], vec!['y', '-']]); // Tapes extended when moving right
+        assert_eq!(machine.head_positions(), &[1, 1]);
+        assert_eq!(machine.step_count(), 1);
     }
 
     #[test]
@@ -594,15 +594,15 @@ mod multi_tape_tests {
 
         // Execute a step
         machine.step();
-        assert_eq!(machine.get_state(), "halt");
-        assert_eq!(machine.get_step_count(), 1);
+        assert_eq!(machine.state(), "halt");
+        assert_eq!(machine.step_count(), 1);
 
         // Reset
         machine.reset();
-        assert_eq!(machine.get_state(), "start");
-        assert_eq!(machine.get_tapes(), &[vec!['a'], vec!['x']]);
-        assert_eq!(machine.get_head_positions(), &[0, 0]);
-        assert_eq!(machine.get_step_count(), 0);
+        assert_eq!(machine.state(), "start");
+        assert_eq!(machine.tapes(), &[vec!['a'], vec!['x']]);
+        assert_eq!(machine.head_positions(), &[0, 0]);
+        assert_eq!(machine.step_count(), 0);
     }
 
     #[test]
@@ -777,8 +777,8 @@ mod multi_tape_tests {
         machine.step();
 
         // First head should stay at position 0, second head should move right
-        assert_eq!(machine.get_head_positions(), &[0, 1]);
-        assert_eq!(machine.get_tapes(), &[vec!['b'], vec!['y', '-']]);
+        assert_eq!(machine.head_positions(), &[0, 1]);
+        assert_eq!(machine.tapes(), &[vec!['b'], vec!['y', '-']]);
     }
 
     #[test]
@@ -790,7 +790,7 @@ mod multi_tape_tests {
         machine.set_tape_content(0, "a_b").unwrap();
 
         // The '_' should be converted to the machine's blank symbol ('-')
-        assert_eq!(machine.get_tapes()[0], vec!['a', '-', 'b']);
+        assert_eq!(machine.tapes()[0], vec!['a', '-', 'b']);
     }
 
     #[test]
@@ -803,8 +803,8 @@ mod multi_tape_tests {
         machine.set_tapes_content(&contents).unwrap();
 
         // The '_' should be converted to the machine's blank symbol ('-')
-        assert_eq!(machine.get_tapes()[0], vec!['a', '-', 'b']);
-        assert_eq!(machine.get_tapes()[1], vec!['x', '-', 'y']);
+        assert_eq!(machine.tapes()[0], vec!['a', '-', 'b']);
+        assert_eq!(machine.tapes()[1], vec!['x', '-', 'y']);
     }
 
     #[test]
