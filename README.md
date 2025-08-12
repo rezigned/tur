@@ -143,7 +143,13 @@ state:
 
 ```bash
 # Run a program
-cargo run --package tur-cli -- -p examples/binary-addition.tur
+cargo run -p tur-cli -- examples/binary-addition.tur
+
+# Pipe input to a program
+echo '$011-' | cargo run -p tur-cli -- examples/binary-addition.tur
+
+# Chaining programs with pipes
+echo '$011' | cargo run -p tur-cli -- examples/binary-addition.tur | cargo run -p tur-cli -- examples/binary-addition.tur
 ```
 
 ### Terminal User Interface (TUI)

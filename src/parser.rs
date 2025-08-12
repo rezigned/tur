@@ -1,8 +1,12 @@
 //! This module provides the parser for Turing Machine programs, utilizing the `pest` crate.
 //! It defines the grammar for `.tur` files and functions to parse the input into a `Program` struct.
 
-use crate::types::{
-    Direction, Program, Transition, TuringMachineError, DEFAULT_BLANK_SYMBOL, INPUT_BLANK_SYMBOL,
+use crate::{
+    analyzer::analyze,
+    types::{
+        Direction, Program, Transition, TuringMachineError, DEFAULT_BLANK_SYMBOL,
+        INPUT_BLANK_SYMBOL,
+    },
 };
 use pest::{
     error::{Error, ErrorVariant},
@@ -23,7 +27,8 @@ pub struct TuringMachineParser;
 ///
 /// This is the main entry point for parsing Turing Machine program definitions.
 /// It trims the input, parses it using the `TuringMachineParser`, and then processes
-/// the resulting parse tree into a structured `Program`.
+/// the resulting parse tree into a structured `Program`. The parsed program is
+/// automatically validated before being returned.
 ///
 /// # Arguments
 ///
@@ -31,15 +36,21 @@ pub struct TuringMachineParser;
 ///
 /// # Returns
 ///
-/// * `Ok(Program)` if the input is successfully parsed into a `Program`.
-/// * `Err(TuringMachineError::ParseError)` if there are any syntax errors or structural issues.
+/// * `Ok(Program)` if the input is successfully parsed and validated.
+/// * `Err(TuringMachineError::ParseError)` if there are any syntax errors.
+/// * `Err(TuringMachineError::ValidationError)` if the program fails validation.
 pub fn parse(input: &str) -> Result<Program, TuringMachineError> {
     let root = TuringMachineParser::parse(Rule::program, input.trim())
         .map_err(|e| TuringMachineError::ParseError(e.into()))? //
         .next()
         .unwrap();
 
-    parse_program(root)
+    let program = parse_program(root)?;
+
+    // Analyze the parsed program
+    analyze(&program)?;
+
+    Ok(program)
 }
 
 /// Parses the top-level structure of a Turing Machine program from a `Pair<Rule::program>`.
@@ -493,8 +504,8 @@ rules:
 name: Simple Multi-Tape
 heads: [0, 0]
 tapes:
-  [a, b, c]
-  [d, e, f]
+  [a]
+  [d]
 rules:
   start:
     [a, d] -> [b, e], [R, R], halt
@@ -506,7 +517,7 @@ rules:
 
         let program = result.unwrap();
         assert_eq!(program.name, "Simple Multi-Tape");
-        assert_eq!(program.tapes, vec!["abc", "def"]);
+        assert_eq!(program.tapes, vec!["a", "d"]);
         assert_eq!(
             program.rules["start"][0],
             Transition {
@@ -783,7 +794,7 @@ rules:
     fn test_parse_tape_with_blank_symbol() {
         let input = r#"
 name: Blank Tape Test
-tape: a, _, b
+tape: a, _
 rules:
   start:
     a -> a, R, halt

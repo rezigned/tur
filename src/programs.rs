@@ -3,10 +3,9 @@ use crate::types::{Program, TuringMachineError};
 use std::sync::RwLock;
 
 // Default embedded programs
-const PROGRAM_TEXTS: [&str; 9] = [
+const PROGRAM_TEXTS: [&str; 8] = [
     include_str!("../examples/binary-addition.tur"),
     include_str!("../examples/palindrome.tur"),
-    include_str!("../examples/binary-counter.tur"),
     include_str!("../examples/event-number-checker.tur"),
     include_str!("../examples/subtraction.tur"),
     include_str!("../examples/busy-beaver-3.tur"),
@@ -167,6 +166,7 @@ pub struct ProgramInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::analyze;
     use crate::machine::TuringMachine;
     use std::fs::File;
     use std::io::Write;
@@ -190,7 +190,7 @@ mod tests {
         let file_path = dir.path().join("custom.tur");
         let content = r#"
 name: Custom Program
-tape: x, y, z
+tape: x
 rules:
   start:
     x -> y, R, stop
@@ -205,7 +205,7 @@ rules:
 
         let program = program.unwrap();
         assert_eq!(program.name, "Custom Program");
-        assert_eq!(program.initial_tape(), "xyz");
+        assert_eq!(program.initial_tape(), "x");
 
         // Test that ProgramLoader can load from directory
         let results = crate::loader::ProgramLoader::load_programs(dir.path());
@@ -222,7 +222,7 @@ rules:
         for i in 0..count {
             let program = ProgramManager::get_program_by_index(i).unwrap();
             assert!(
-                TuringMachine::validate_program(&program).is_ok(),
+                analyze(&program).is_ok(),
                 "Program '{}' is invalid",
                 program.name
             );
@@ -237,7 +237,6 @@ rules:
         let names = ProgramManager::list_program_names();
         assert!(names.contains(&"Binary addition".to_string()));
         assert!(names.contains(&"Palindrome Checker".to_string()));
-        assert!(names.contains(&"Binary Counter".to_string()));
         assert!(names.contains(&"Subtraction".to_string()));
     }
 
@@ -283,7 +282,7 @@ rules:
 
         let program = ProgramManager::get_program_by_name("Binary addition");
         assert!(program.is_ok());
-        assert_eq!(program.unwrap().initial_tape(), "$00111-");
+        assert_eq!(program.unwrap().initial_tape(), "$00111");
 
         let result = ProgramManager::get_program_by_name("Nonexistent");
         assert!(result.is_err());
@@ -298,7 +297,6 @@ rules:
         assert!(names.len() >= 4);
         assert!(names.contains(&"Binary addition".to_string()));
         assert!(names.contains(&"Palindrome Checker".to_string()));
-        assert!(names.contains(&"Binary Counter".to_string()));
         assert!(names.contains(&"Subtraction".to_string()));
     }
 
@@ -327,7 +325,7 @@ rules:
         let _ = ProgramManager::load();
 
         let results = ProgramManager::search_programs("binary");
-        assert!(results.len() >= 2); // "Binary addition" and "Binary counter"
+        assert!(!results.is_empty()); // "Binary addition"
 
         let results = ProgramManager::search_programs("palindrome");
         assert!(!results.is_empty());

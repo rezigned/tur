@@ -470,6 +470,10 @@ body {
     border-color: var(--danger-color);
 }
 
+.program-status.error pre {
+    white-space: pre-wrap;
+}
+
 .program-status svg {
     height: 1.25rem;
     width: 1.25rem;
