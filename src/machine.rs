@@ -269,87 +269,6 @@ impl TuringMachine {
                 .is_none_or(|transitions| transitions.is_empty())
     }
 
-    /// Validates a `Program` before it is used to create a `TuringMachine`.
-    ///
-    /// This performs various checks, including:
-    /// - Ensuring the initial state is defined.
-    /// - Checking for empty tapes.
-    /// - Verifying that head positions match the number of tapes.
-    /// - Confirming that all referenced states in transitions exist.
-    /// - Ensuring consistency in tape counts for multi-tape transitions.
-    /// - For single-tape programs, it also leverages the `analyzer` module for more in-depth checks.
-    ///
-    /// # Arguments
-    ///
-    /// * `program` - A reference to the `Program` to validate.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(())` if the program is valid.
-    /// * `Err(TuringMachineError::ValidationError)` if any validation rule is violated.
-    pub fn validate_program(program: &Program) -> Result<(), TuringMachineError> {
-        // Check if initial state exists in rules
-        if !program.rules.contains_key(&program.initial_state) {
-            return Err(TuringMachineError::ValidationError(format!(
-                "Initial state '{}' not defined in transitions",
-                program.initial_state
-            )));
-        }
-
-        // Check for empty tapes
-        if program.tapes.is_empty() {
-            return Err(TuringMachineError::ValidationError(
-                "No tapes defined".to_string(),
-            ));
-        }
-
-        // Check that head positions match number of tapes
-        if program.heads.len() != program.tapes.len() {
-            return Err(TuringMachineError::ValidationError(format!(
-                "Number of head positions ({}) does not match number of tapes ({})",
-                program.heads.len(),
-                program.tapes.len()
-            )));
-        }
-
-        // Validate that all referenced states exist
-        for (state, transitions) in &program.rules {
-            for transition in transitions {
-                if !program.rules.contains_key(&transition.next_state)
-                    && transition.next_state != "halt"
-                {
-                    return Err(TuringMachineError::ValidationError(format!(
-                        "State '{}' references undefined state '{}'",
-                        state, transition.next_state
-                    )));
-                }
-
-                // Check that all transitions have consistent tape counts
-                if transition.read.len() != program.tapes.len()
-                    || transition.write.len() != program.tapes.len()
-                    || transition.directions.len() != program.tapes.len()
-                {
-                    return Err(TuringMachineError::ValidationError(format!(
-                        "Transition in state '{}' has inconsistent tape counts",
-                        state
-                    )));
-                }
-            }
-        }
-
-        // For single-tape programs, use the analyzer module
-        if program.is_single_tape() {
-            if let Err(errors) = crate::analyzer::analyze(program) {
-                // Return the first error for backward compatibility
-                if let Some(first_error) = errors.first() {
-                    return Err((*first_error).clone().into());
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     /// Returns a slice of the machine's tapes.
     pub fn tapes(&self) -> &[Vec<char>] {
         &self.tapes
@@ -649,106 +568,6 @@ mod multi_tape_tests {
     }
 
     #[test]
-    fn test_multi_tape_validate_program_success() {
-        let program = create_simple_multi_tape_program();
-        assert!(TuringMachine::validate_program(&program).is_ok());
-    }
-
-    #[test]
-    fn test_multi_tape_validate_program_initial_state_not_defined() {
-        let mut rules = HashMap::new();
-        rules.insert("other".to_string(), Vec::new());
-
-        let program = Program {
-            name: "Invalid".to_string(),
-            initial_state: "nonexistent".to_string(),
-            tapes: vec!["a".to_string(), "x".to_string()],
-            heads: vec![0, 0],
-            blank: '-',
-            rules,
-        };
-
-        let result = TuringMachine::validate_program(&program);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Initial state 'nonexistent' not defined in transitions"));
-    }
-
-    #[test]
-    fn test_multi_tape_validate_program_empty_tapes() {
-        let mut rules = HashMap::new();
-        rules.insert("start".to_string(), Vec::new());
-
-        let program = Program {
-            name: "Invalid".to_string(),
-            initial_state: "start".to_string(),
-            tapes: vec![],
-            heads: vec![],
-            blank: '-',
-            rules,
-        };
-
-        let result = TuringMachine::validate_program(&program);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No tapes defined"));
-    }
-
-    #[test]
-    fn test_multi_tape_validate_program_inconsistent_head_positions() {
-        let mut rules = HashMap::new();
-        rules.insert("start".to_string(), Vec::new());
-
-        let program = Program {
-            name: "Invalid".to_string(),
-            initial_state: "start".to_string(),
-            tapes: vec!["a".to_string(), "x".to_string()],
-            heads: vec![0], // Only one head position for two tapes
-            blank: '-',
-            rules,
-        };
-
-        let result = TuringMachine::validate_program(&program);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Number of head positions"));
-    }
-
-    #[test]
-    fn test_multi_tape_validate_program_undefined_state() {
-        let mut rules = HashMap::new();
-        rules.insert(
-            "start".to_string(),
-            vec![Transition {
-                read: vec!['a', 'x'],
-                write: vec!['b'], // Only one write symbol for two tapes
-                directions: vec![Direction::Right, Direction::Right],
-                next_state: "halt".to_string(),
-            }],
-        );
-        rules.insert("halt".to_string(), Vec::new());
-
-        let program = Program {
-            name: "Invalid".to_string(),
-            initial_state: "start".to_string(),
-            tapes: vec!["a".to_string(), "x".to_string()],
-            heads: vec![0, 0],
-            blank: '-',
-            rules,
-        };
-
-        let result = TuringMachine::validate_program(&program);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("inconsistent tape counts"));
-    }
-
-    #[test]
     fn test_multi_tape_stay_direction() {
         let mut rules = HashMap::new();
 
@@ -814,7 +633,7 @@ mod multi_tape_tests {
             r#"
 name: Custom Blank Write Test
 blank: {custom_blank}
-tape: a, _, b
+tape: a, _
 rules:
   start:
     a -> a, R, halt

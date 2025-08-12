@@ -28,7 +28,7 @@ The `.tur` file format uses a structured syntax parsed by a Pest grammar with co
 - **Name**: Specified with `name:` followed by the program name
 - **Tape Configuration**:
   - **Single-tape**: `tape: symbol1, symbol2, symbol3`
-  - **Multi-tape**: 
+  - **Multi-tape**:
     ```tur
     tapes:
       [a, b, c]
@@ -47,7 +47,7 @@ The `.tur` file format uses a structured syntax parsed by a Pest grammar with co
     - **Write-only transitions**: If `-> new_symbol` is omitted, the read symbol is preserved
   - The first state defined is automatically the initial state
 - **Comments**: Use `#` for line comments and inline comments
-- **Special Symbols**: 
+- **Special Symbols**:
   - `_` represents the blank symbol in program definitions
   - Any Unicode character can be used as tape symbols
   - The blank symbol can be customized with the `blank:` directive
@@ -56,7 +56,6 @@ The `.tur` file format uses a structured syntax parsed by a Pest grammar with co
 
 ### Single-Tape Programs
 - **binary-addition.tur**: Adds two binary numbers
-- **binary-counter.tur**: Increments a binary number
 - **busy-beaver-3.tur**: Classic 3-state busy beaver
 - **event-number-checker.tur**: Checks if a number is even
 - **palindrome.tur**: Checks if input is a palindrome

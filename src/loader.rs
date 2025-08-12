@@ -126,7 +126,7 @@ mod tests {
         let file_path = dir.path().join("test.tur");
 
         let program_content =
-            "name: Test Program\ntape: a, b, c\nrules:\n  start:\n    a -> b, R, stop\n  stop:";
+            "name: Test Program\ntape: a\nrules:\n  start:\n    a -> b, R, stop\n  stop:";
 
         let mut file = File::create(&file_path).unwrap();
         file.write_all(program_content.as_bytes()).unwrap();
@@ -136,7 +136,7 @@ mod tests {
 
         let program = result.unwrap();
         assert_eq!(program.name, "Test Program");
-        assert_eq!(program.initial_tape(), "abc");
+        assert_eq!(program.initial_tape(), "a");
         assert!(program.rules.contains_key("start"));
         assert!(program.rules.contains_key("stop"));
     }
@@ -162,7 +162,7 @@ mod tests {
         // Create a valid program file
         let valid_path = dir.path().join("valid.tur");
         let valid_content =
-            "name: Valid Program\ntape: a, b, c\nrules:\n  start:\n    a -> b, R, stop\n  stop:";
+            "name: Valid Program\ntape: a\nrules:\n  start:\n    a -> b, R, stop\n  stop:";
         let mut valid_file = File::create(&valid_path).unwrap();
         valid_file.write_all(valid_content.as_bytes()).unwrap();
 
