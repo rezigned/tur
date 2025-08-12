@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/rezigned/tur/compare/tur-v0.1.0...tur-v0.1.1) (2025-08-12)
+
+
+### Bug Fixes
+
+* improve TUI layout ([356683d](https://github.com/rezigned/tur/commit/356683d4da42cf8cb8f141f90edc55be372175a8))
+* **tur-cli:** remove -p option and make program a mandatory argument so it can be chained multiple times with pipe (composable) ([9f33ce7](https://github.com/rezigned/tur/commit/9f33ce7a18333353c61c2fa31ff9c480f690e5b6))
+
 ## [0.1.0](https://github.com/rezigned/tur/compare/tur-v0.0.1...tur-v0.1.0) (2025-08-10)
 
 
