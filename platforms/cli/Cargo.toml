@@ -17,3 +17,4 @@ path = "src/main.rs"
 [dependencies]
 tur = { path = "../../", version = "0.1.0" }
 clap = { version = "4.0", features = ["derive"] }
+atty = "0.2.14"

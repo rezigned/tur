@@ -15,7 +15,7 @@ Turing machine programs are defined in a simple text format with the `.tur` exte
 ```
 name: Simple Test
 tape: a
-transitions:
+rules:
   start:
     a -> b, R, halt
   halt:
@@ -30,8 +30,8 @@ The `.tur` file format uses a structured syntax parsed by a Pest grammar:
 - **Tapes**: Specified with `tapes:` followed by multiple lines of tape definitions for multi-tape machines:
   ```
   tapes:
-    - [a, b, c]
-    - [x, y, z]
+    [a, b, c]
+    [x, y, z]
   ```
 - **Head**: Specified with `head:` followed by the initial head position (default: 0)
 - **Heads**: Specified with `heads:` followed by an array of initial head positions for multi-tape machines:
@@ -39,7 +39,7 @@ The `.tur` file format uses a structured syntax parsed by a Pest grammar:
   heads: [0, 0]
   ```
 - **Blank**: Specified with `blank:` followed by the symbol to use for blank cells (default: '-')
-- **Transitions**: Specified with `transitions:` followed by state definitions
+- **Rules**: Specified with `rules:` followed by state definitions
   - Each state is defined by its name followed by a colon
   - Each transition rule is indented (2 spaces or tabs) and specifies:
     - For single-tape machines: `symbol -> new_symbol, direction, next_state`

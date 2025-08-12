@@ -49,7 +49,7 @@ impl App {
         message: String,
         keyboard_listener: EventListener,
     ) -> Self {
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
         let initial_state = program.initial_state.clone();
         let num_tapes = machine.get_tapes().len();
 
@@ -269,7 +269,7 @@ impl Component for App {
                 if index != self.current_program {
                     self.current_program = index;
                     let program = ProgramManager::get_program_by_index(index).unwrap();
-                    self.machine = TuringMachine::new(&program);
+                    self.machine = TuringMachine::new(program);
                     self.editor_text = ProgramManager::get_program_text_by_index(index)
                         .unwrap_or("")
                         .into();
@@ -299,7 +299,7 @@ impl Component for App {
                 true
             }
             Msg::LoadCustomProgram(program) => {
-                self.machine = TuringMachine::new(&program);
+                self.machine = TuringMachine::new(program);
                 self.auto_play = false;
                 self.is_program_ready = true;
                 self.current_program = usize::MAX; // Indicate custom program

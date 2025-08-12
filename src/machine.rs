@@ -15,7 +15,7 @@ use std::collections::HashMap;
 /// the blank symbol, and the set of transition rules.
 pub struct TuringMachine {
     state: String,
-    pub tapes: Vec<Vec<char>>,
+    tapes: Vec<Vec<char>>,
     head_positions: Vec<usize>,
     blank_symbol: char,
     rules: HashMap<String, Vec<Transition>>,
@@ -33,8 +33,8 @@ impl TuringMachine {
     ///
     /// # Arguments
     ///
-    /// * `program` - A reference to the `Program` defining the Turing Machine.
-    pub fn new(program: &Program) -> Self {
+    /// * `program` - The `Program` defining the Turing Machine.
+    pub fn new(program: Program) -> Self {
         let tapes: Vec<Vec<char>> = program
             .tapes
             .iter()
@@ -46,10 +46,10 @@ impl TuringMachine {
             tapes: tapes.clone(),
             head_positions: program.heads.clone(),
             blank_symbol: program.blank,
-            rules: program.rules.clone(),
-            initial_state: program.initial_state.clone(),
+            rules: program.rules,
+            initial_state: program.initial_state,
             initial_tapes: tapes,
-            initial_heads: program.heads.clone(),
+            initial_heads: program.heads,
             step_count: 0,
         }
     }
@@ -426,6 +426,69 @@ impl TuringMachine {
     pub fn get_blank_symbol(&self) -> char {
         self.blank_symbol
     }
+
+    /// Sets the content of a specific tape.
+    ///
+    /// # Arguments
+    ///
+    /// * `tape_index` - The index of the tape to modify (0-based)
+    /// * `content` - The new content for the tape as a string
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the tape was successfully set
+    /// * `Err(TuringMachineError)` if the tape index is invalid
+    pub fn set_tape_content(
+        &mut self,
+        tape_index: usize,
+        content: &str,
+    ) -> Result<(), TuringMachineError> {
+        if tape_index >= self.tapes.len() {
+            return Err(TuringMachineError::ValidationError(format!(
+                "Tape index {} is out of bounds (machine has {} tapes)",
+                tape_index,
+                self.tapes.len()
+            )));
+        }
+
+        self.tapes[tape_index] = content
+            .chars()
+            .map(|c| {
+                if c == INPUT_BLANK_SYMBOL {
+                    self.blank_symbol
+                } else {
+                    c
+                }
+            })
+            .collect();
+        Ok(())
+    }
+
+    /// Sets the content of multiple tapes at once.
+    ///
+    /// # Arguments
+    ///
+    /// * `contents` - A vector of strings representing the new content for each tape
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if all tapes were successfully set
+    /// * `Err(TuringMachineError)` if there are more contents than tapes
+    pub fn set_tapes_content(&mut self, contents: &[String]) -> Result<(), TuringMachineError> {
+        if contents.len() > self.tapes.len() {
+            return Err(TuringMachineError::ValidationError(format!(
+                "Too many tape contents provided: {} contents for {} tapes",
+                contents.len(),
+                self.tapes.len()
+            )));
+        }
+
+        for (i, content) in contents.iter().enumerate() {
+            self.set_tape_content(i, content)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -464,7 +527,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_machine_creation() {
         let program = create_simple_multi_tape_program();
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
 
         assert_eq!(machine.get_state(), "start");
         assert_eq!(machine.get_tapes(), &[vec!['a'], vec!['x']]);
@@ -475,7 +538,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_single_step() {
         let program = create_simple_multi_tape_program();
-        let mut machine = TuringMachine::new(&program);
+        let mut machine = TuringMachine::new(program);
 
         let result = machine.step();
 
@@ -489,7 +552,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_halt_state() {
         let program = create_simple_multi_tape_program();
-        let mut machine = TuringMachine::new(&program);
+        let mut machine = TuringMachine::new(program);
 
         // First step should continue
         let result1 = machine.step();
@@ -503,10 +566,12 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_no_transition_error() {
         let program = create_simple_multi_tape_program();
-        let mut machine = TuringMachine::new(&program);
+        let mut machine = TuringMachine::new(program);
 
         // Manually set tapes to symbols that have no transition
-        machine.tapes = vec![vec!['z'], vec!['z']];
+        machine
+            .set_tapes_content(&["z".to_string(), "z".to_string()])
+            .unwrap();
 
         let result = machine.step();
 
@@ -525,7 +590,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_reset() {
         let program = create_simple_multi_tape_program();
-        let mut machine = TuringMachine::new(&program);
+        let mut machine = TuringMachine::new(program);
 
         // Execute a step
         machine.step();
@@ -543,7 +608,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_run_to_completion() {
         let program = create_simple_multi_tape_program();
-        let mut machine = TuringMachine::new(&program);
+        let mut machine = TuringMachine::new(program);
 
         let steps = machine.run_to_completion();
 
@@ -556,7 +621,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_is_halted() {
         let program = create_simple_multi_tape_program();
-        let mut machine = TuringMachine::new(&program);
+        let mut machine = TuringMachine::new(program);
 
         assert!(!machine.is_halted()); // Should not be halted initially
 
@@ -567,7 +632,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_get_current_symbols() {
         let program = create_simple_multi_tape_program();
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
 
         assert_eq!(machine.get_current_symbols(), vec!['a', 'x']);
     }
@@ -575,7 +640,7 @@ mod multi_tape_tests {
     #[test]
     fn test_multi_tape_get_tapes_as_strings() {
         let program = create_simple_multi_tape_program();
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
 
         assert_eq!(
             machine.get_tapes_as_strings(),
@@ -708,12 +773,38 @@ mod multi_tape_tests {
             rules,
         };
 
-        let mut machine = TuringMachine::new(&program);
+        let mut machine = TuringMachine::new(program);
         machine.step();
 
         // First head should stay at position 0, second head should move right
         assert_eq!(machine.get_head_positions(), &[0, 1]);
         assert_eq!(machine.get_tapes(), &[vec!['b'], vec!['y', '-']]);
+    }
+
+    #[test]
+    fn test_set_tape_content_with_blank_symbol() {
+        let program = create_simple_multi_tape_program();
+        let mut machine = TuringMachine::new(program);
+
+        // Test setting tape content with INPUT_BLANK_SYMBOL ('_')
+        machine.set_tape_content(0, "a_b").unwrap();
+
+        // The '_' should be converted to the machine's blank symbol ('-')
+        assert_eq!(machine.get_tapes()[0], vec!['a', '-', 'b']);
+    }
+
+    #[test]
+    fn test_set_tapes_content_with_blank_symbol() {
+        let program = create_simple_multi_tape_program();
+        let mut machine = TuringMachine::new(program);
+
+        // Test setting multiple tapes with INPUT_BLANK_SYMBOL ('_')
+        let contents = vec!["a_b".to_string(), "x_y".to_string()];
+        machine.set_tapes_content(&contents).unwrap();
+
+        // The '_' should be converted to the machine's blank symbol ('-')
+        assert_eq!(machine.get_tapes()[0], vec!['a', '-', 'b']);
+        assert_eq!(machine.get_tapes()[1], vec!['x', '-', 'y']);
     }
 
     #[test]

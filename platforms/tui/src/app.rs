@@ -29,7 +29,7 @@ pub struct App {
 impl App {
     pub fn new_default() -> Self {
         let program = ProgramManager::get_program_by_index(0).unwrap();
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
 
         Self {
             machine,
@@ -46,7 +46,7 @@ impl App {
     pub fn new_from_program_string(program_content: String) -> Result<Self, String> {
         let program: Program = ProgramLoader::load_program_from_string(&program_content)
             .map_err(|e| format!("Failed to load program: {}", e))?;
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
 
         Ok(Self {
             machine,
@@ -470,7 +470,7 @@ impl App {
 
     fn load_current_program(&mut self) {
         let program = ProgramManager::get_program_by_index(self.current_program_index).unwrap();
-        self.machine = TuringMachine::new(&program);
+        self.machine = TuringMachine::new(program);
         self.auto_play = false;
         self.scroll_offset = 0;
 

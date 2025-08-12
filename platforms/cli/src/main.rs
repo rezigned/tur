@@ -30,12 +30,18 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let mut machine = TuringMachine::new(&program);
+    let mut machine = TuringMachine::new(program);
 
-    for (i, input_str) in cli.input.iter().enumerate() {
-        if i < machine.tapes.len() {
-            machine.tapes[i] = input_str.chars().collect();
+    if !cli.input.is_empty() {
+        for (i, input_str) in cli.input.iter().enumerate() {
+            if i < machine.tapes.len() {
+                machine.tapes[i] = input_str.chars().collect();
+            }
         }
+    } else if !atty::is(atty::Stream::Stdin) {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        machine.tapes[0] = input.trim().chars().collect();
     }
 
     if cli.debug {
