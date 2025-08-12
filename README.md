@@ -6,7 +6,7 @@
   <img src=".github/tur-logo.png" width="400" />
 </p>
 
-**Tur** is a language for defining and executing Turing machines, complete with parser, interpreter, and multi-platform visualization tools.
+**Tur** is a language for defining and executing Turing machines, complete with parser, interpreter, and multi-platform visualization tools. It supports both single-tape and multi-tape configurations.
 
 <table>
   <thead>
@@ -133,8 +133,9 @@ state:
 
 ### Special Symbols
 
-- The underscore (`"_"`) is a special symbol used to represent a blank character.
+- The underscore (`_`) is a special symbol used to represent a blank character in program definitions.
 - Any other character or unicode string can be used as tape symbols.
+- The blank symbol can be customized using the `blank:` directive in the program.
 
 ## Platforms
 
@@ -142,7 +143,7 @@ state:
 
 ```bash
 # Run a program
-cargo run --package tur-cli -- examples/binary-addition.tur
+cargo run --package tur-cli -- -p examples/binary-addition.tur
 ```
 
 ### Terminal User Interface (TUI)

@@ -1869,6 +1869,7 @@ dependencies = [
 name = "tur-cli"
 version = "0.1.0"
 dependencies = [
+ "atty",
  "clap",
  "tur",
 ]

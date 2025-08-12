@@ -29,7 +29,7 @@ pub struct App {
 impl App {
     pub fn new_default() -> Self {
         let program = ProgramManager::get_program_by_index(0).unwrap();
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
 
         Self {
             machine,
@@ -46,7 +46,7 @@ impl App {
     pub fn new_from_program_string(program_content: String) -> Result<Self, String> {
         let program: Program = ProgramLoader::load_program_from_string(&program_content)
             .map_err(|e| format!("Failed to load program: {}", e))?;
-        let machine = TuringMachine::new(&program);
+        let machine = TuringMachine::new(program);
 
         Ok(Self {
             machine,
@@ -174,8 +174,8 @@ impl App {
     }
 
     fn render_tapes(&self, f: &mut Frame, area: Rect) {
-        let tapes = self.machine.get_tapes();
-        let head_positions = self.machine.get_head_positions();
+        let tapes = self.machine.tapes();
+        let head_positions = self.machine.head_positions();
         let tape_count = tapes.len();
 
         let mut text_lines = Vec::new();
@@ -220,7 +220,7 @@ impl App {
             let current_symbol = if head_pos < tape.len() {
                 tape[head_pos]
             } else {
-                self.machine.get_blank_symbol()
+                self.machine.blank_symbol()
             };
             let head_indicator = format!(
                 "Head at position: {} (symbol: '{}')",
@@ -245,8 +245,8 @@ impl App {
     }
 
     fn render_machine_state(&self, f: &mut Frame, area: Rect) {
-        let state = self.machine.get_state();
-        let step_count = self.machine.get_step_count();
+        let state = self.machine.state();
+        let step_count = self.machine.step_count();
         let is_halted = self.machine.is_halted();
 
         let (status_text, status_color) = if is_halted {
@@ -291,8 +291,8 @@ impl App {
     }
 
     fn render_rules(&self, f: &mut Frame, area: Rect) {
-        let tape_count = self.machine.get_tapes().len();
-        let current_state = self.machine.get_state();
+        let tape_count = self.machine.tapes().len();
+        let current_state = self.machine.state();
         let current_symbols = self.machine.get_current_symbols();
 
         let mut items = Vec::new();
@@ -346,7 +346,7 @@ impl App {
     }
 
     fn render_help(&self, f: &mut Frame, area: Rect) {
-        let tape_count = self.machine.get_tapes().len();
+        let tape_count = self.machine.tapes().len();
 
         let help_text = vec![
             Line::from("Controls:"),
@@ -408,7 +408,7 @@ impl App {
 
         match self.machine.step() {
             ExecutionResult::Continue => {
-                self.message = format!("Step {} completed", self.machine.get_step_count());
+                self.message = format!("Step {} completed", self.machine.step_count());
             }
             ExecutionResult::Halt => {
                 self.message = "Machine halted".to_string();
@@ -470,12 +470,13 @@ impl App {
 
     fn load_current_program(&mut self) {
         let program = ProgramManager::get_program_by_index(self.current_program_index).unwrap();
-        self.machine = TuringMachine::new(&program);
+        let tape_count = program.tapes.len();
+        let program_name = program.name.clone();
+        self.machine = TuringMachine::new(program);
         self.auto_play = false;
         self.scroll_offset = 0;
 
-        let tape_count = program.tapes.len();
-        self.message = format!("Loaded {}-tape program: {}", tape_count, program.name);
+        self.message = format!("Loaded {}-tape program: {}", tape_count, program_name);
     }
 
     pub fn toggle_help(&mut self) {

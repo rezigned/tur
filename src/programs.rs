@@ -249,7 +249,8 @@ rules:
         let count = ProgramManager::get_program_count();
         for i in 0..count {
             let program = ProgramManager::get_program_by_index(i).unwrap();
-            let mut machine = TuringMachine::new(&program);
+            let program_name = program.name.clone();
+            let mut machine = TuringMachine::new(program);
             let result = machine.step();
 
             // Should either continue or halt, but not error on first step
@@ -257,7 +258,7 @@ rules:
                 crate::types::ExecutionResult::Continue => {}
                 crate::types::ExecutionResult::Halt => {}
                 crate::types::ExecutionResult::Error(e) => {
-                    panic!("Program '{}' failed on first step: {}", program.name, e);
+                    panic!("Program '{}' failed on first step: {}", program_name, e);
                 }
             }
         }
