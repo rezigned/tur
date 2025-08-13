@@ -13,6 +13,7 @@ window.addEventListener("load", () => {
     nodeTextColor: "white",
     edgeTextBackgroundColor: "white",
   };
+
   console.log("Graph theme initialized");
 
   // Initialize CodeMirror-based syntax highlighting
