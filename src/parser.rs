@@ -484,7 +484,11 @@ name: Simple Test
 tape: a
 rules:
   start:
-    a -> b, R, halt
+    a -> b, R, other
+
+  other:
+    b -> c, R, halt
+
   halt:
 "#;
 
