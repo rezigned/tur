@@ -194,7 +194,7 @@ impl GraphView {
                                 {{ selector: '.current', style: {{ 'background-color': gt.activeNodeColor }} }},
                                 {{ selector: '.previous', style: {{ 'background-color': gt.defaultNodeColor }} }},
                                 {{ selector: '.halt', style: {{ 'background-color': gt.defaultNodeColor }} }},
-                                {{ selector: 'edge', style: {{ 'width': 2, 'line-color': gt.edgeColor, 'target-arrow-color': gt.edgeColor, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'font-size': '12px', 'text-background-color': 'white', 'text-background-opacity': 0.8 }} }},
+                                {{ selector: 'edge', style: {{ 'width': 2, 'line-color': gt.edgeColor, 'target-arrow-color': gt.edgeColor, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'font-family': '"Fira Code", monospace', 'font-size': '12px', 'color': '#444', 'text-background-color': '#F5F7FA', 'text-background-opacity': 0.8 }} }},
                                 {{ selector: 'edge[label]', style: {{ 'label': 'data(label)', 'text-wrap': 'wrap', 'text-max-width': '120px' }} }}
                             ],
                             layout: {{ name: 'circle', padding: 30 }},
@@ -313,6 +313,6 @@ impl GraphView {
             .collect::<Vec<&str>>()
             .join(",");
 
-        format!("{}/{}/{}", read_str, write_str, dir_str)
+        format!("{} -> {}, {}", read_str, write_str, dir_str)
     }
 }

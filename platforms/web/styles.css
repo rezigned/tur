@@ -668,17 +668,16 @@ body {
     .app {
         padding: 1.5rem;
     }
+    body {
+      padding-top: 1rem;
+    }
+    body .socials {
+      position: relative;
+      margin: 0 1rem 0.2rem;
+    }
     .main-layout, .left-panel, .right-panel {
         gap: 1.5rem;
     }
-    .card, .program-selector-section, .editor-section, .tape-view,
-.state-display,
-.control-panel,
-.graph-view,
-.multi-tape-view,
-.status-section {
-    /* These styles are now handled by .section */
-}
     .btn {
         padding: 0.7rem 1.4rem;
         font-size: 0.9rem;
@@ -687,10 +686,12 @@ body {
 
 .socials {
     position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
+    right: 0;
+    top: 0;
     display: flex;
+    justify-content: flex-end;
     gap: 5px;
+    margin: 1.5rem 1.5rem 0 0;
     z-index: 10;
 }
 /* Share Button Styles */

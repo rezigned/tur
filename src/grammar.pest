@@ -41,11 +41,10 @@ state_stop   =  { "stop:" ~ state ~ ("," ~ state)* }
 // =============================================================================
 // TRANSITIONS SECTION
 // =============================================================================
-rules           = ${ "rules:" ~ transition_block ~ last_transition_block? }
-transition_block      = _{ block_start ~ (comment | transition+) ~ block_end ~ transition_block* }
-transition            = ${ state ~ ":" ~ actions+ }
-last_transition_block = _{ block_start ~ (comment | last_transition) ~ block_end }
-last_transition       = ${ state ~ ":" }
+rules            = ${ "rules:" ~ transition_block ~ (block_sep ~ last_transition)? }
+transition_block = _{ block_start ~ transition ~ (block_sep ~ (comment | transition))* ~ block_end ~ transition_block* }
+transition       = ${ state ~ ":" ~ actions+ }
+last_transition  = ${ state ~ ":" }
 
 // =============================================================================
 // ACTIONS AND TRANSITIONS
@@ -63,6 +62,7 @@ direction          =  { "<" | ">" | "-" | "L" | "R" | "S" }
 // =============================================================================
 block_start = _{ NEWLINE ~ PEEK_ALL ~ PUSH(INDENT) }
 block_end   = _{ DROP }
+block_sep   = _{ NEWLINE+ ~ INDENT }
 
 // =============================================================================
 // BASIC ELEMENTS
@@ -88,6 +88,6 @@ trailing_comment = _{ WHITESPACE+ ~ "#" ~ (!NEWLINE ~ ANY)* }
 // =============================================================================
 // WHITESPACE AND INDENTATION
 // =============================================================================
-LEADING    =  { NEWLINE | comment }
+LEADING    = _{ NEWLINE | comment }
 INDENT     = _{ ("  " | "\t")+ }
 WHITESPACE = _{ " " }
