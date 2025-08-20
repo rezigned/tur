@@ -1,0 +1,23 @@
+# https://www.youtube.com/watch?v=PLVCscCY4xI
+name: Even Number of 0s and 1s
+tape: 0, 0, 1, 1
+rules:
+  start:
+    X, R, start
+    0 -> X, R, B
+    1 -> X, R, C
+    _, R, accept
+  B:
+    X, R, B
+    0, R, B
+    1 -> X, L, D
+  C:
+    X, R, C
+    1, R, C
+    0 -> X, L, D
+  D:
+    X, L, D
+    1, L, D
+    0, L, D
+    _, R, start
+  accept:

@@ -38,7 +38,7 @@ pub fn program_selector(props: &ProgramSelectorProps) -> Html {
             } else {
                 html! {}
             }}
-            {(0..ProgramManager::get_program_count()).map(|i| {
+            {(0..ProgramManager::count()).map(|i| {
                 let program = ProgramManager::get_program_by_index(i).unwrap();
                 let tape_indicator = if program.is_single_tape() { "📼" } else { "📼📼" };
                 html! {

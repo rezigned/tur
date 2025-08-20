@@ -4,7 +4,7 @@
 use crate::{
     analyzer::analyze,
     types::{
-        Direction, Program, Transition, TuringMachineError, DEFAULT_BLANK_SYMBOL,
+        Direction, Mode, Program, Transition, TuringMachineError, DEFAULT_BLANK_SYMBOL,
         INPUT_BLANK_SYMBOL,
     },
 };
@@ -59,6 +59,7 @@ pub fn parse(input: &str) -> Result<Program, TuringMachineError> {
 /// It also performs initial validation checks for uniqueness and consistency of sections.
 fn parse_program(pair: Pair<Rule>) -> Result<Program, TuringMachineError> {
     let mut name: Option<String> = None;
+    let mut mode: Option<Mode> = None;
     let mut tapes: Option<(Vec<Tape>, Vec<Vec<usize>>)> = None;
     let mut heads: Option<Vec<usize>> = None;
     let mut blank: Option<char> = None;
@@ -75,6 +76,7 @@ fn parse_program(pair: Pair<Rule>) -> Result<Program, TuringMachineError> {
 
         match rule {
             Rule::name => name = Some(parse_inner_string(p)),
+            Rule::mode => mode = Some(parse_mode(p)?),
             Rule::blank => blank = Some(parse_symbol(&parse_inner_string(p))),
             Rule::rules => rules = Some(parse_transitions(p, &mut initial_state)?),
             Rule::tape | Rule::tapes => {
@@ -91,6 +93,7 @@ fn parse_program(pair: Pair<Rule>) -> Result<Program, TuringMachineError> {
 
     // Handle mandatory checks
     let name = check_required_rule(name, vec!["name"])?;
+    let mode = mode.unwrap_or_default();
     let rules = check_required_rule(rules, vec!["rules"])?;
     let initial_state = check_required_rule(initial_state, vec!["initial_state"])?;
     let tapes = check_required_rule(tapes, vec!["tape", "tapes"])?;
@@ -104,6 +107,7 @@ fn parse_program(pair: Pair<Rule>) -> Result<Program, TuringMachineError> {
 
     Ok(Program {
         name,
+        mode,
         tapes: tapes
             .into_iter()
             .map(|tape| tape.into_iter().collect())
@@ -113,6 +117,18 @@ fn parse_program(pair: Pair<Rule>) -> Result<Program, TuringMachineError> {
         rules,
         initial_state,
     })
+}
+
+fn parse_mode(pair: Pair<'_, Rule>) -> Result<Mode, TuringMachineError> {
+    let span = pair.as_span();
+    match parse_inner_string(pair).as_str() {
+        "normal" => Ok(Mode::Normal),
+        "strict" => Ok(Mode::Strict),
+        mode => Err(parse_error(
+            &format!("Invalid mode: {mode}. Expected 'normal' or 'strict'",),
+            span,
+        )),
+    }
 }
 
 /// Parses tape definitions from a `Pair<Rule::tape>` or `Pair<Rule::tapes>`.
@@ -224,14 +240,7 @@ fn parse_multi_tape_transition(
             for inner in p.into_inner() {
                 match inner.as_rule() {
                     Rule::single_tape_action => {
-                        // Convert single tape action to multi-tape format
-                        let action = parse_single_tape_action(inner)?;
-                        actions.push(Transition {
-                            read: vec![action.read],
-                            write: vec![action.write],
-                            directions: vec![action.direction],
-                            next_state: action.next,
-                        });
+                        actions.push(parse_single_tape_action(inner)?);
                     }
                     Rule::multi_tape_action => {
                         actions.push(parse_multi_tape_action(inner)?);
@@ -248,7 +257,7 @@ fn parse_multi_tape_transition(
 /// Parses a single-tape action from a `Pair<Rule::single_tape_action>`.
 ///
 /// It extracts the read symbol, write symbol (defaults to read if omitted), direction, and next state.
-fn parse_single_tape_action(pair: Pair<Rule>) -> Result<ParsedAction, TuringMachineError> {
+fn parse_single_tape_action(pair: Pair<Rule>) -> Result<Transition, TuringMachineError> {
     let mut pairs = pair.into_inner();
     let read = parse_symbol_from_pairs(&mut pairs);
 
@@ -259,13 +268,13 @@ fn parse_single_tape_action(pair: Pair<Rule>) -> Result<ParsedAction, TuringMach
     };
 
     let direction = parse_direction(pairs.next().unwrap())?;
-    let next = parse_string(&mut pairs);
+    let next_state = parse_string(&mut pairs);
 
-    Ok(ParsedAction {
-        read,
-        write,
-        direction,
-        next,
+    Ok(Transition {
+        read: vec![read],
+        write: vec![write],
+        directions: vec![direction],
+        next_state,
     })
 }
 
@@ -278,10 +287,13 @@ fn parse_multi_tape_action(pair: Pair<Rule>) -> Result<Transition, TuringMachine
     let mut pairs = pair.into_inner();
 
     // Parse read symbols
-    let read_symbols = parse_multi_tape_symbols(pairs.next().unwrap())?;
+    let read = parse_multi_tape_symbols(pairs.next().unwrap())?;
 
     // Parse write symbols (or use read symbols if omitted)
-    let write_symbols = parse_multi_tape_symbols(pairs.next().unwrap())?;
+    let write = match pairs.peek().unwrap().as_rule() {
+        Rule::directions => read.clone(),
+        _ => parse_multi_tape_symbols(pairs.next().unwrap())?,
+    };
 
     // Parse directions
     let directions = parse_directions(pairs.next().unwrap())?;
@@ -290,12 +302,12 @@ fn parse_multi_tape_action(pair: Pair<Rule>) -> Result<Transition, TuringMachine
     let next_state = parse_string(&mut pairs);
 
     // Validate that all arrays have the same length
-    if read_symbols.len() != write_symbols.len() || read_symbols.len() != directions.len() {
+    if read.len() != write.len() || read.len() != directions.len() {
         return Err(parse_error(
             &format!(
                 "Inconsistent multi-tape action: read={}, write={}, directions={}",
-                read_symbols.len(),
-                write_symbols.len(),
+                read.len(),
+                write.len(),
                 directions.len()
             ),
             span,
@@ -303,8 +315,8 @@ fn parse_multi_tape_action(pair: Pair<Rule>) -> Result<Transition, TuringMachine
     }
 
     Ok(Transition {
-        read: read_symbols,
-        write: write_symbols,
+        read,
+        write,
         directions,
         next_state,
     })
@@ -385,6 +397,7 @@ fn check_unique_rule(
     if !matches!(
         rule,
         Rule::name
+            | Rule::mode
             | Rule::blank
             | Rule::tape
             | Rule::tapes
@@ -465,14 +478,6 @@ fn format_rules(names: Vec<&str>) -> String {
         .join(" or ")
 }
 
-/// A helper struct to temporarily hold parsed single-tape action data.
-struct ParsedAction {
-    read: char,
-    write: char,
-    direction: Direction,
-    next: String,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -497,6 +502,7 @@ rules:
 
         let program = result.unwrap();
         assert_eq!(program.name, "Simple Test");
+        assert_eq!(program.mode, Mode::Normal);
         assert_eq!(program.initial_tape(), "a");
         assert!(program.rules.contains_key("start"));
         assert!(program.rules.contains_key("halt"));
@@ -521,6 +527,7 @@ rules:
 
         let program = result.unwrap();
         assert_eq!(program.name, "Simple Multi-Tape");
+        assert_eq!(program.mode, Mode::Normal);
         assert_eq!(program.tapes, vec!["a", "d"]);
         assert_eq!(
             program.rules["start"][0],
@@ -566,6 +573,37 @@ rules:
         assert!(result.is_err());
         let error = result.unwrap_err();
         assert!(matches!(error, TuringMachineError::ParseError(_)));
+    }
+
+    #[test]
+    fn test_parse_strict_mode() {
+        let input = r#"
+name: Simple Test
+mode: strict
+tape: a
+rules:
+  start:
+    a -> b, R, other
+"#;
+        let program = parse(input).unwrap();
+        assert_eq!(program.mode, Mode::Strict);
+    }
+
+    #[test]
+    fn test_parse_invalid_mode() {
+        let input = r#"
+name: Simple
+mode: invalid
+tape: a
+rules:
+  start:
+    a -> b, R, halt
+"#;
+        let result = parse(input);
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(matches!(error, TuringMachineError::ParseError(_)));
+        assert!(error.to_string().contains("Invalid mode: invalid"),);
     }
 
     #[test]

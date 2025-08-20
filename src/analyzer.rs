@@ -368,7 +368,7 @@ fn check_tape_symbols(program: &Program) -> Result<(), AnalysisError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{Direction, Transition};
+    use crate::types::{Direction, Mode, Transition};
     use std::collections::HashMap;
 
     fn create_test_program(
@@ -378,6 +378,7 @@ mod tests {
     ) -> Program {
         Program {
             name: "Test Program".to_string(),
+            mode: Mode::Normal,
             initial_state: initial_state.to_string(),
             tapes: vec![initial_tape.to_string()],
             heads: vec![0],
@@ -624,6 +625,7 @@ mod tests {
         // Initial tapes: ["a", "x"], should be valid
         let program_valid = Program {
             name: "Valid Multi-Tape".to_string(),
+            mode: Mode::Normal,
             initial_state: "start".to_string(),
             tapes: vec!["a".to_string(), "x".to_string()],
             heads: vec![0, 0],
@@ -635,6 +637,7 @@ mod tests {
         // Initial tapes: ["a", "z"], 'z' is not handled
         let program_invalid = Program {
             name: "Invalid Multi-Tape".to_string(),
+            mode: Mode::Normal,
             initial_state: "start".to_string(),
             tapes: vec!["a".to_string(), "z".to_string()],
             heads: vec![0, 0],

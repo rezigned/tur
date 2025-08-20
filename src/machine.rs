@@ -3,10 +3,9 @@
 //! and execution of transition rules.
 
 use crate::types::{
-    Direction, ExecutionResult, ExecutionStep, Program, Transition, TuringMachineError,
-    INPUT_BLANK_SYMBOL,
+    Direction, Halt, Mode, Program, Step, Transition, TuringMachineError, INPUT_BLANK_SYMBOL,
+    MAX_EXECUTION_STEPS,
 };
-use std::collections::HashMap;
 
 /// Represents a multi-tape Turing Machine.
 ///
@@ -16,12 +15,9 @@ use std::collections::HashMap;
 pub struct TuringMachine {
     state: String,
     tapes: Vec<Vec<char>>,
-    head_positions: Vec<usize>,
-    blank_symbol: char,
-    rules: HashMap<String, Vec<Transition>>,
-    initial_state: String,
-    initial_tapes: Vec<Vec<char>>,
-    initial_heads: Vec<usize>,
+    heads: Vec<usize>,
+    blank: char,
+    program: Program,
     step_count: usize,
 }
 
@@ -35,78 +31,13 @@ impl TuringMachine {
     ///
     /// * `program` - The `Program` defining the Turing Machine.
     pub fn new(program: Program) -> Self {
-        let tapes: Vec<Vec<char>> = program
-            .tapes
-            .iter()
-            .map(|tape| tape.chars().collect())
-            .collect();
-
         Self {
             state: program.initial_state.clone(),
-            tapes: tapes.clone(),
-            head_positions: program.heads.clone(),
-            blank_symbol: program.blank,
-            rules: program.rules,
-            initial_state: program.initial_state,
-            initial_tapes: tapes,
-            initial_heads: program.heads,
+            tapes: program.tapes().clone(),
+            heads: program.heads.clone(),
+            blank: program.blank,
+            program,
             step_count: 0,
-        }
-    }
-
-    /// Returns the content of the first tape as a `Vec<char>`.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn get_tape(&self) -> Vec<char> {
-        self.tapes.first().cloned().unwrap_or_default()
-    }
-
-    /// Returns the head position of the first tape.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn get_head_position(&self) -> usize {
-        self.head_positions.first().cloned().unwrap_or(0)
-    }
-
-    /// Returns the symbol currently under the head of the first tape.
-    /// If the head is beyond the tape's current length, the blank symbol is returned.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn get_current_symbol(&self) -> char {
-        let tape_index = 0; // First tape for single-tape compatibility
-        let head_pos = self.head_positions.get(tape_index).cloned().unwrap_or(0);
-        if let Some(tape) = self.tapes.get(tape_index) {
-            if head_pos < tape.len() {
-                tape[head_pos]
-            } else {
-                self.blank_symbol
-            }
-        } else {
-            self.blank_symbol
-        }
-    }
-
-    /// Returns the content of the first tape as a `String`.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn get_tape_as_string(&self) -> String {
-        self.get_tape().iter().collect()
-    }
-
-    /// Returns a vector of symbols that have defined transitions from the current state
-    /// on the first tape.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn get_available_transitions(&self) -> Vec<char> {
-        // For single-tape compatibility, return symbols that have transitions in current state
-        if let Some(transitions) = self.rules.get(&self.state) {
-            transitions
-                .iter()
-                .filter_map(|t| {
-                    if t.read.len() == 1 {
-                        Some(t.read[0])
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
         }
     }
 
@@ -118,49 +49,39 @@ impl TuringMachine {
     /// # Returns
     ///
     /// * `ExecutionResult::Continue` if the machine successfully performs a step.
-    /// * `ExecutionResult::Halt` if the machine enters a halt state (no defined transitions).
-    /// * `ExecutionResult::Error` if an error occurs, such as no matching transition found.
-    pub fn step(&mut self) -> ExecutionResult {
-        // Check if we're in a halt state (no transitions defined)
-        if !self.rules.contains_key(&self.state) {
-            return ExecutionResult::Halt;
-        }
-
-        let state_transitions = match self.rules.get(&self.state) {
-            Some(transitions) => transitions,
-            None => {
-                return ExecutionResult::Error(TuringMachineError::InvalidState(self.state.clone()))
-            }
-        };
-
-        // If no transitions are defined for this state, it's a halt state
-        if state_transitions.is_empty() {
-            return ExecutionResult::Halt;
+    /// * `ExecutionResult::Halt(_)` if the machine enters a halt state (no defined transitions).
+    pub fn step(&mut self) -> Step {
+        if self.is_halted() {
+            return Step::Halt(Halt::Ok);
         }
 
         // Ensure all tapes are large enough
-        for (i, head_pos) in self.head_positions.iter().enumerate() {
+        for (i, head_pos) in self.heads.iter().enumerate() {
             if *head_pos >= self.tapes[i].len() {
-                self.tapes[i].resize(*head_pos + 1, self.blank_symbol);
+                self.tapes[i].resize(*head_pos + 1, self.blank);
             }
         }
 
         // Find matching transition
-        let transition = match self.get_current_transition().cloned() {
+        let transition = match self.transition().cloned() {
             Some(t) => t,
             None => {
-                return ExecutionResult::Error(TuringMachineError::NoMultiTapeTransition {
-                    state: self.state.clone(),
-                    symbols: self.get_current_symbols(),
-                });
+                // No transition found for the current symbols.
+                return match self.program.mode {
+                    Mode::Normal => Step::Halt(Halt::Ok),
+                    Mode::Strict => Step::Halt(Halt::Err(TuringMachineError::UndefinedTransition(
+                        self.state.clone(),
+                        self.symbols(),
+                    ))),
+                };
             }
         };
 
         // Apply transition to all tapes
         for i in 0..self.tapes.len() {
             // Write new symbol
-            self.tapes[i][self.head_positions[i]] = if transition.write[i] == INPUT_BLANK_SYMBOL {
-                self.blank_symbol
+            self.tapes[i][self.heads[i]] = if transition.write[i] == INPUT_BLANK_SYMBOL {
+                self.blank
             } else {
                 transition.write[i]
             };
@@ -168,17 +89,17 @@ impl TuringMachine {
             // Move head according to direction
             match transition.directions[i] {
                 Direction::Left => {
-                    if self.head_positions[i] == 0 {
+                    if self.heads[i] == 0 {
                         // Extend tape to the left
-                        self.tapes[i].insert(0, self.blank_symbol);
+                        self.tapes[i].insert(0, self.blank);
                     } else {
-                        self.head_positions[i] -= 1;
+                        self.heads[i] -= 1;
                     }
                 }
                 Direction::Right => {
-                    self.head_positions[i] += 1;
-                    if self.head_positions[i] >= self.tapes[i].len() {
-                        self.tapes[i].push(self.blank_symbol);
+                    self.heads[i] += 1;
+                    if self.heads[i] >= self.tapes[i].len() {
+                        self.tapes[i].push(self.blank);
                     }
                 }
                 Direction::Stay => {
@@ -190,49 +111,19 @@ impl TuringMachine {
         self.state = transition.next_state.clone();
         self.step_count += 1;
 
-        ExecutionResult::Continue
+        Step::Continue
     }
 
     /// Runs the Turing Machine until it halts or reaches a maximum step count.
-    ///
-    /// This method records each `ExecutionStep` taken by the machine.
-    ///
-    /// # Returns
-    ///
-    /// * `Vec<ExecutionStep>` - A vector of `ExecutionStep`s representing the computation history.
-    pub fn run_to_completion(&mut self) -> Vec<ExecutionStep> {
-        let mut steps = Vec::new();
-        let max_steps = 10000; // Prevent infinite loops
-
-        for _ in 0..max_steps {
-            let step = ExecutionStep {
-                state: self.state.clone(),
-                tapes: self.tapes.clone(),
-                head_positions: self.head_positions.clone(),
-                symbols_read: self
-                    .head_positions
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &pos)| {
-                        if pos < self.tapes[i].len() {
-                            self.tapes[i][pos]
-                        } else {
-                            self.blank_symbol
-                        }
-                    })
-                    .collect(),
-                transition: None, // Could be enhanced to include the transition taken
-            };
-            steps.push(step);
-
+    pub fn run(&mut self) -> Step {
+        for _ in 0..MAX_EXECUTION_STEPS {
             match self.step() {
-                ExecutionResult::Continue => continue,
-                ExecutionResult::Halt => break,
-                ExecutionResult::Error(_) => break,
+                Step::Continue => continue,
+                halt => return halt,
             }
         }
 
-        steps
+        Step::Halt(Halt::Ok)
     }
 
     /// Returns the current state of the Turing Machine.
@@ -242,15 +133,15 @@ impl TuringMachine {
 
     /// Returns the initial state of the Turing Machine.
     pub fn initial_state(&self) -> &str {
-        &self.initial_state
+        &self.program.initial_state
     }
 
     /// Resets the Turing Machine to its initial configuration.
     /// This includes resetting the state, tapes, head positions, and step count.
     pub fn reset(&mut self) {
-        self.state = self.initial_state.clone();
-        self.tapes = self.initial_tapes.clone();
-        self.head_positions = self.initial_heads.clone();
+        self.state = self.program.initial_state.clone();
+        self.tapes = self.program.tapes().clone();
+        self.heads = self.program.heads.clone();
         self.step_count = 0;
     }
 
@@ -262,11 +153,10 @@ impl TuringMachine {
     /// Checks if the Turing Machine is currently in a halted state.
     /// A machine is halted if there are no defined transitions for its current state.
     pub fn is_halted(&self) -> bool {
-        !self.rules.contains_key(&self.state)
-            || self
-                .rules
-                .get(&self.state)
-                .is_none_or(|transitions| transitions.is_empty())
+        self.program
+            .rules
+            .get(&self.state)
+            .is_none_or(|transitions| transitions.is_empty())
     }
 
     /// Returns a slice of the machine's tapes.
@@ -275,29 +165,27 @@ impl TuringMachine {
     }
 
     /// Returns a slice of the machine's head positions for all tapes.
-    pub fn head_positions(&self) -> &[usize] {
-        &self.head_positions
-    }
-
-    /// Returns the content of all tapes as a vector of `String`s.
-    pub fn get_tapes_as_strings(&self) -> Vec<String> {
-        self.tapes
-            .iter()
-            .map(|tape| tape.iter().collect())
-            .collect()
+    pub fn heads(&self) -> &[usize] {
+        &self.heads
     }
 
     /// Returns a vector of symbols currently under each tape's head.
     /// If a head is beyond its tape's current length, the blank symbol is returned for that tape.
-    pub fn get_current_symbols(&self) -> Vec<char> {
-        self.head_positions
+    ///
+    /// | a | b | c | tape 1
+    /// | d | e |   | tape 2
+    ///   0   1   2   index
+    ///
+    /// heads [0, 2] will return ['a', '_']
+    pub fn symbols(&self) -> Vec<char> {
+        self.heads
             .iter()
             .enumerate()
             .map(|(i, &pos)| {
                 if pos < self.tapes[i].len() {
                     self.tapes[i][pos]
                 } else {
-                    self.blank_symbol
+                    self.blank
                 }
             })
             .collect()
@@ -313,23 +201,25 @@ impl TuringMachine {
     ///
     /// * `Some(&Transition)` if a matching transition is found.
     /// * `None` if no matching transition exists.
-    pub fn get_current_transition(&self) -> Option<&Transition> {
-        match self.rules.get(&self.state) {
+    pub fn transition(&self) -> Option<&Transition> {
+        match self.program.rules.get(&self.state) {
             Some(transitions) => {
-                let symbols = self.get_current_symbols();
+                let symbols = self.symbols();
 
                 transitions.iter().find(|t| {
                     if t.read.len() != symbols.len() {
                         return false;
                     }
 
-                    for (i, &symbol) in t.read.iter().enumerate() {
+                    for (i, &read) in t.read.iter().enumerate() {
                         // If the transition rule specifies `INPUT_BLANK_SYMBOL`, it matches the program's blank symbol
-                        if symbol == INPUT_BLANK_SYMBOL {
-                            if symbols[i] != self.blank_symbol {
-                                return false;
-                            }
-                        } else if symbol != symbols[i] {
+                        let expected = if read == INPUT_BLANK_SYMBOL {
+                            self.blank
+                        } else {
+                            read
+                        };
+
+                        if symbols[i] != expected {
                             return false;
                         }
                     }
@@ -342,8 +232,8 @@ impl TuringMachine {
     }
 
     /// Returns the blank symbol used by this Turing Machine.
-    pub fn blank_symbol(&self) -> char {
-        self.blank_symbol
+    pub fn blank(&self) -> char {
+        self.blank
     }
 
     /// Sets the content of a specific tape.
@@ -374,7 +264,7 @@ impl TuringMachine {
             .chars()
             .map(|c| {
                 if c == INPUT_BLANK_SYMBOL {
-                    self.blank_symbol
+                    self.blank
                 } else {
                     c
                 }
@@ -413,7 +303,7 @@ impl TuringMachine {
 #[cfg(test)]
 mod multi_tape_tests {
     use super::*;
-    use crate::types::{Direction, Program, Transition};
+    use crate::types::{Direction, Halt, Mode, Program, Transition};
     use std::collections::HashMap;
 
     fn create_simple_multi_tape_program() -> Program {
@@ -435,6 +325,7 @@ mod multi_tape_tests {
 
         Program {
             name: "Simple Multi-Tape Test".to_string(),
+            mode: Mode::default(),
             initial_state: "start".to_string(),
             tapes: vec!["a".to_string(), "x".to_string()],
             heads: vec![0, 0],
@@ -450,7 +341,7 @@ mod multi_tape_tests {
 
         assert_eq!(machine.state(), "start");
         assert_eq!(machine.tapes(), &[vec!['a'], vec!['x']]);
-        assert_eq!(machine.head_positions(), &[0, 0]);
+        assert_eq!(machine.heads(), &[0, 0]);
         assert_eq!(machine.step_count(), 0);
     }
 
@@ -461,10 +352,10 @@ mod multi_tape_tests {
 
         let result = machine.step();
 
-        assert_eq!(result, ExecutionResult::Continue);
+        assert_eq!(result, Step::Continue);
         assert_eq!(machine.state(), "halt");
         assert_eq!(machine.tapes(), &[vec!['b', '-'], vec!['y', '-']]); // Tapes extended when moving right
-        assert_eq!(machine.head_positions(), &[1, 1]);
+        assert_eq!(machine.heads(), &[1, 1]);
         assert_eq!(machine.step_count(), 1);
     }
 
@@ -475,16 +366,18 @@ mod multi_tape_tests {
 
         // First step should continue
         let result1 = machine.step();
-        assert_eq!(result1, ExecutionResult::Continue);
+        assert_eq!(result1, Step::Continue);
 
         // Second step should halt (no transitions in halt state)
         let result2 = machine.step();
-        assert_eq!(result2, ExecutionResult::Halt);
+        assert_eq!(result2, Step::Halt(Halt::Ok));
     }
 
     #[test]
-    fn test_multi_tape_no_transition_error() {
-        let program = create_simple_multi_tape_program();
+    fn test_multi_tape_rejection() {
+        let mut program = create_simple_multi_tape_program();
+        program.mode = Mode::Strict;
+
         let mut machine = TuringMachine::new(program);
 
         // Manually set tapes to symbols that have no transition
@@ -495,14 +388,11 @@ mod multi_tape_tests {
         let result = machine.step();
 
         match result {
-            ExecutionResult::Error(TuringMachineError::NoMultiTapeTransition {
-                state,
-                symbols,
-            }) => {
+            Step::Halt(Halt::Err(TuringMachineError::UndefinedTransition(state, symbols))) => {
                 assert_eq!(state, "start");
                 assert_eq!(symbols, vec!['z', 'z']);
             }
-            _ => panic!("Expected NoMultiTapeTransition error"),
+            _ => panic!("Expected a Rejection result, but got {:?}", result),
         }
     }
 
@@ -520,7 +410,7 @@ mod multi_tape_tests {
         machine.reset();
         assert_eq!(machine.state(), "start");
         assert_eq!(machine.tapes(), &[vec!['a'], vec!['x']]);
-        assert_eq!(machine.head_positions(), &[0, 0]);
+        assert_eq!(machine.heads(), &[0, 0]);
         assert_eq!(machine.step_count(), 0);
     }
 
@@ -529,12 +419,8 @@ mod multi_tape_tests {
         let program = create_simple_multi_tape_program();
         let mut machine = TuringMachine::new(program);
 
-        let steps = machine.run_to_completion();
-
-        // Should have recorded the initial state and the state after the step
-        assert_eq!(steps.len(), 2);
-        assert_eq!(steps[0].state, "start");
-        assert_eq!(steps[1].state, "halt");
+        let step = machine.run();
+        assert_eq!(step, Step::Halt(Halt::Ok));
     }
 
     #[test]
@@ -553,18 +439,7 @@ mod multi_tape_tests {
         let program = create_simple_multi_tape_program();
         let machine = TuringMachine::new(program);
 
-        assert_eq!(machine.get_current_symbols(), vec!['a', 'x']);
-    }
-
-    #[test]
-    fn test_multi_tape_get_tapes_as_strings() {
-        let program = create_simple_multi_tape_program();
-        let machine = TuringMachine::new(program);
-
-        assert_eq!(
-            machine.get_tapes_as_strings(),
-            vec!["a".to_string(), "x".to_string()]
-        );
+        assert_eq!(machine.symbols(), vec!['a', 'x']);
     }
 
     #[test]
@@ -585,6 +460,7 @@ mod multi_tape_tests {
 
         let program = Program {
             name: "Stay Direction Test".to_string(),
+            mode: Mode::default(),
             initial_state: "start".to_string(),
             tapes: vec!["a".to_string(), "x".to_string()],
             heads: vec![0, 0],
@@ -596,7 +472,7 @@ mod multi_tape_tests {
         machine.step();
 
         // First head should stay at position 0, second head should move right
-        assert_eq!(machine.head_positions(), &[0, 1]);
+        assert_eq!(machine.heads(), &[0, 1]);
         assert_eq!(machine.tapes(), &[vec!['b'], vec!['y', '-']]);
     }
 
