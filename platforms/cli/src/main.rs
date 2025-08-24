@@ -3,7 +3,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 use tur::loader::ProgramLoader;
 use tur::machine::TuringMachine;
-use tur::ExecutionResult;
+use tur::Step;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None, arg_required_else_help = true)]
@@ -52,28 +52,21 @@ fn main() {
     if cli.debug {
         run_with_debug(&mut machine);
     } else {
-        machine.run_to_completion();
+        machine.run();
     }
 
-    println!("{}", machine.get_tapes_as_strings().join("\n"));
+    println!("{}", format_tapes(machine.tapes()).join("\n"));
 }
 
 /// Runs the Turing machine with debug output, printing each step.
 fn run_with_debug(machine: &mut TuringMachine) {
     let print_state = |machine: &TuringMachine| {
-        let tapes_str = machine
-            .get_tapes_as_strings()
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-
         println!(
             "Step: {}, State: {}, Tapes: [{}], Heads: {:?}",
             machine.step_count(),
             machine.state(),
-            tapes_str,
-            machine.head_positions()
+            format_tapes(machine.tapes()).join(", "),
+            machine.heads()
         );
     };
 
@@ -81,19 +74,16 @@ fn run_with_debug(machine: &mut TuringMachine) {
 
     loop {
         match machine.step() {
-            ExecutionResult::Continue => {
+            Step::Continue => {
                 print_state(machine);
             }
-            ExecutionResult::Halt => {
+            Step::Halt(_) => {
                 println!("\nMachine halted.");
-                break;
-            }
-            ExecutionResult::Error(e) => {
-                println!("\nMachine error: {}", e);
                 break;
             }
         }
     }
+
     println!("\nFinal tapes:");
 }
 
@@ -120,4 +110,9 @@ fn read_tape_inputs(inputs: &[String]) -> Result<Vec<String>, String> {
         // No input provided
         Ok(Vec::new())
     }
+}
+
+/// Returns the content of all tapes as a vector of `String`s.
+pub fn format_tapes(tapes: &[Vec<char>]) -> Vec<String> {
+    tapes.iter().map(|tape| tape.iter().collect()).collect()
 }

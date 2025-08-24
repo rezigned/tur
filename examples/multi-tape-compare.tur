@@ -3,23 +3,23 @@ heads: [0, 0, 0]
 tapes:
   [a, b, c]
   [a, b, c]
-  [-]
+  [_]
 rules:
   start:
-    [a, a, -] -> [a, a, -], [R, R, S], start
-    [b, b, -] -> [b, b, -], [R, R, S], start
-    [c, c, -] -> [c, c, -], [R, R, S], start
-    [-, -, -] -> [-, -, Y], [S, S, S], halt
-    [a, b, -] -> [a, b, N], [S, S, S], halt
-    [a, c, -] -> [a, c, N], [S, S, S], halt
-    [b, a, -] -> [b, a, N], [S, S, S], halt
-    [b, c, -] -> [b, c, N], [S, S, S], halt
-    [c, a, -] -> [c, a, N], [S, S, S], halt
-    [c, b, -] -> [c, b, N], [S, S, S], halt
-    [a, -, -] -> [a, -, N], [S, S, S], halt
-    [b, -, -] -> [b, -, N], [S, S, S], halt
-    [c, -, -] -> [c, -, N], [S, S, S], halt
-    [-, a, -] -> [-, a, N], [S, S, S], halt
-    [-, b, -] -> [-, b, N], [S, S, S], halt
-    [-, c, -] -> [-, c, N], [S, S, S], halt
+    [a, a, _] -> [a, a, _], [R, R, S], start
+    [b, b, _] -> [b, b, _], [R, R, S], start
+    [c, c, _] -> [c, c, _], [R, R, S], start
+    [_, _, _] -> [_, _, Y], [S, S, S], halt
+    [a, b, _] -> [a, b, N], [S, S, S], halt
+    [a, c, _] -> [a, c, N], [S, S, S], halt
+    [b, a, _] -> [b, a, N], [S, S, S], halt
+    [b, c, _] -> [b, c, N], [S, S, S], halt
+    [c, a, _] -> [c, a, N], [S, S, S], halt
+    [c, b, _] -> [c, b, N], [S, S, S], halt
+    [a, _, _] -> [a, _, N], [S, S, S], halt
+    [b, _, _] -> [b, _, N], [S, S, S], halt
+    [c, _, _] -> [c, _, N], [S, S, S], halt
+    [_, a, _] -> [_, a, N], [S, S, S], halt
+    [_, b, _] -> [_, b, N], [S, S, S], halt
+    [_, c, _] -> [_, c, N], [S, S, S], halt
   halt:

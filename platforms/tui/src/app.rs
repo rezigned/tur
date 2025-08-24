@@ -4,12 +4,12 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Block, BorderType, Borders, List, ListItem, Padding, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Padding, Paragraph, Wrap},
     Frame,
 };
 use tur::{
     types::{DEFAULT_BLANK_SYMBOL, INPUT_BLANK_SYMBOL},
-    ExecutionResult, Program, ProgramLoader, ProgramManager, TuringMachine,
+    Program, ProgramLoader, ProgramManager, Step, TuringMachine,
 };
 
 const BLOCK_PADDING: Padding = Padding::new(1, 1, 0, 0);
@@ -24,11 +24,15 @@ pub struct App {
     pub(crate) keymap: Config<Action>,
     // Indicates if the program was loaded from a file/stdin, disabling program switching
     program_loaded_from_source: bool,
+    program_content: String,
 }
 
 impl App {
     pub fn new_default() -> Self {
         let program = ProgramManager::get_program_by_index(0).unwrap();
+        let program_content = ProgramManager::get_program_text_by_index(0)
+            .unwrap()
+            .to_string();
         let machine = TuringMachine::new(program);
 
         Self {
@@ -40,6 +44,7 @@ impl App {
             message: "Press 'h' for help.".to_string(),
             show_help: false,
             program_loaded_from_source: false,
+            program_content,
         }
     }
 
@@ -57,6 +62,7 @@ impl App {
             message: "Program loaded from source. Press 'h' for help.".to_string(),
             show_help: false,
             program_loaded_from_source: true,
+            program_content,
         })
     }
 
@@ -64,7 +70,7 @@ impl App {
         let margin_size = Margin::new(1, 0); // Define margin size
         let inner_area = f.area().inner(margin_size);
 
-        // Main vertical chunks: Program Info, Middle (Tapes + State/Rules), Status
+        // Main vertical chunks: Program Info, Middle (Source + Machine), Status
         let main_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -74,52 +80,67 @@ impl App {
             ])
             .split(inner_area);
 
-        // Apply margin to Program Info
-        let program_info_area = main_chunks[0];
-        self.render_program_info(f, program_info_area);
+        // Render Program Info in the top main chunk
+        self.render_program_info(f, main_chunks[0]);
 
-        // Middle horizontal chunks: Tapes (left), State + Rules (right)
+        // Middle horizontal chunks: Source Code (left), Machine (right)
         let middle_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(50), // Tapes (takes 50% width)
-                Constraint::Length(1),      // Machine State + State Rules (takes 50% width)
-                Constraint::Percentage(50), // Tapes (takes 50% width)
+                Constraint::Percentage(50), // Source code
+                Constraint::Length(1),
+                Constraint::Percentage(50), // Machine
             ])
             .split(main_chunks[1]);
 
-        // Render Tapes in the left middle chunk with margin
-        let left_chunk = middle_chunks[0];
-        let tape_area = Layout::default()
-            .direction(Direction::Vertical)
-            // .constraints([Constraint::Length(tape_section_height as u16), Constraint::Min(0)])
-            .constraints([Constraint::Percentage(100)])
-            .split(left_chunk)[0];
-        self.render_tapes(f, tape_area);
+        self.render_source_code(f, middle_chunks[0]);
 
-        // Right vertical chunks: Machine State, State Rules/Help
+        // Right vertical chunks: Machine State, Tapes/Help
         let right_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3), // Machine State (fixed height)
-                Constraint::Min(0),    // State Rules/Help (flexible height)
+                Constraint::Length(3), // Machine State
+                Constraint::Min(0),    // Tapes
             ])
             .split(middle_chunks[2]);
 
-        // Render Machine State in the top right middle chunk with margin
-        let machine_state_area = right_chunks[0];
-        self.render_machine_state(f, machine_state_area);
+        self.render_machine_state(f, right_chunks[0]);
 
-        // Render State Rules or Help in the bottom right middle chunk with margin
-        let rules_help_area = right_chunks[1];
         if self.show_help {
-            self.render_help(f, rules_help_area);
+            self.render_help(f, right_chunks[1]);
         } else {
-            self.render_rules(f, rules_help_area);
+            self.render_tapes(f, right_chunks[1]);
         }
 
-        // Render Status in the bottom main chunk with margin
+        // Render Status in the bottom main chunk
         self.render_status(f, main_chunks[2]);
+    }
+
+    fn render_source_code(&self, f: &mut Frame, area: Rect) {
+        let keywords = [
+            "name:", "mode:", "head:", "heads:", "blank:", "tape:", "tapes:", "states:", "rules:",
+        ];
+
+        let mut lines = Vec::new();
+        for line in self.program_content.lines() {
+            let mut spans = Vec::new();
+            let mut parts = line.split_whitespace();
+            if let Some(first_word) = parts.next() {
+                if keywords.contains(&first_word) {
+                    spans.push(Span::styled(first_word, Style::default().fg(Color::Yellow)));
+                    spans.push(Span::raw(" "));
+                    spans.push(Span::raw(parts.collect::<Vec<_>>().join(" ")));
+                } else {
+                    spans.push(Span::raw(line));
+                }
+            } else {
+                spans.push(Span::raw(line));
+            }
+            lines.push(Line::from(spans));
+        }
+
+        let paragraph = section("Source Code", lines).wrap(Wrap { trim: false });
+        f.render_widget(paragraph, area);
     }
 
     fn render_program_info(&self, f: &mut Frame, area: Rect) {
@@ -136,7 +157,7 @@ impl App {
                     "{} ({}/{})",
                     program.name,
                     self.current_program_index + 1,
-                    ProgramManager::get_program_count()
+                    ProgramManager::count()
                 )
             }),
         ])];
@@ -175,7 +196,7 @@ impl App {
 
     fn render_tapes(&self, f: &mut Frame, area: Rect) {
         let tapes = self.machine.tapes();
-        let head_positions = self.machine.head_positions();
+        let head_positions = self.machine.heads();
         let tape_count = tapes.len();
 
         let mut text_lines = Vec::new();
@@ -220,7 +241,7 @@ impl App {
             let current_symbol = if head_pos < tape.len() {
                 tape[head_pos]
             } else {
-                self.machine.blank_symbol()
+                self.machine.blank()
             };
             let head_indicator = format!(
                 "Head at position: {} (symbol: '{}')",
@@ -272,7 +293,7 @@ impl App {
         ])];
 
         // Always use array format for symbols (consistent for single and multi-tape)
-        let current_symbols = self.machine.get_current_symbols();
+        let current_symbols = self.machine.symbols();
         let symbols_str: String = current_symbols
             .iter()
             .map(|&c| format!("'{}'", c))
@@ -288,61 +309,6 @@ impl App {
         let paragraph = section("Machine State", text);
 
         f.render_widget(paragraph, area);
-    }
-
-    fn render_rules(&self, f: &mut Frame, area: Rect) {
-        let tape_count = self.machine.tapes().len();
-        let current_state = self.machine.state();
-        let current_symbols = self.machine.get_current_symbols();
-
-        let mut items = Vec::new();
-
-        // Always show state
-        items.push(ListItem::new(Line::from(vec![
-            Span::styled("State: ", Style::default().fg(Color::Yellow)),
-            Span::raw(current_state),
-        ])));
-
-        // Always use array format for symbols (consistent)
-        let symbols_str: String = current_symbols
-            .iter()
-            .map(|&c| format!("'{}'", c))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        items.push(ListItem::new(Line::from(vec![
-            Span::styled("Reading: [", Style::default().fg(Color::Cyan)),
-            Span::raw(symbols_str),
-            Span::styled("]", Style::default().fg(Color::Cyan)),
-        ])));
-
-        // For single-tape, still show available transitions
-        if tape_count == 1 {
-            let available_transitions = self.machine.get_available_transitions();
-            if !available_transitions.is_empty() {
-                items.push(ListItem::new(Line::from("")));
-                items.push(ListItem::new(Line::from("Available rules:")));
-                for &symbol in &available_transitions {
-                    items.push(ListItem::new(Line::from(format!(
-                        "  On '{}' -> transition available",
-                        symbol
-                    ))));
-                }
-            }
-        } else {
-            items.push(ListItem::new(Line::from("")));
-            items.push(ListItem::new(Line::from("Multi-tape rules are complex.")));
-            items.push(ListItem::new(Line::from(
-                "See program definition for details.",
-            )));
-        }
-
-        // Always use "State Information" for consistency
-        let list = List::new(items)
-            .block(block("State Information"))
-            .style(Style::default().fg(Color::White));
-
-        f.render_widget(list, area);
     }
 
     fn render_help(&self, f: &mut Frame, area: Rect) {
@@ -400,22 +366,12 @@ impl App {
     }
 
     pub fn step_machine(&mut self) {
-        if self.machine.is_halted() {
-            self.message = "Machine is halted. Press 'r' to reset.".to_string();
-            self.auto_play = false;
-            return;
-        }
-
         match self.machine.step() {
-            ExecutionResult::Continue => {
+            Step::Continue => {
                 self.message = format!("Step {} completed", self.machine.step_count());
             }
-            ExecutionResult::Halt => {
-                self.message = "Machine halted".to_string();
-                self.auto_play = false;
-            }
-            ExecutionResult::Error(e) => {
-                self.message = format!("Error: {}", e);
+            Step::Halt(_) => {
+                self.message = "Machine is halted. Press 'r' to reset.".to_string();
                 self.auto_play = false;
             }
         }
@@ -449,7 +405,7 @@ impl App {
             self.message = "Cannot switch programs when loaded from file/stdin.".to_string();
             return;
         }
-        let count = ProgramManager::get_program_count();
+        let count = ProgramManager::count();
         self.current_program_index = (self.current_program_index + 1) % count;
         self.load_current_program();
     }
@@ -459,7 +415,7 @@ impl App {
             self.message = "Cannot switch programs when loaded from file/stdin.".to_string();
             return;
         }
-        let count = ProgramManager::get_program_count();
+        let count = ProgramManager::count();
         self.current_program_index = if self.current_program_index == 0 {
             count - 1
         } else {
@@ -470,6 +426,10 @@ impl App {
 
     fn load_current_program(&mut self) {
         let program = ProgramManager::get_program_by_index(self.current_program_index).unwrap();
+        self.program_content =
+            ProgramManager::get_program_text_by_index(self.current_program_index)
+                .unwrap()
+                .to_string();
         let tape_count = program.tapes.len();
         let program_name = program.name.clone();
         self.machine = TuringMachine::new(program);

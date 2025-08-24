@@ -5,6 +5,7 @@ program = {
     SOI
     ~ (
           (LEADING* ~ name)
+        | (LEADING+ ~ mode)
         | (LEADING+ ~ head)
         | (LEADING+ ~ heads)
         | (LEADING+ ~ blank)
@@ -20,6 +21,7 @@ program = {
 // TOP-LEVEL SECTIONS
 // =============================================================================
 name      = { "name:" ~ string }
+mode      = { "mode:" ~ string }
 head      = { "head:" ~ index }
 heads     = { "heads:" ~ "[" ~ index ~ ("," ~ index)* ~ "]" }
 blank     = { "blank:" ~ symbol }
@@ -51,7 +53,7 @@ last_transition  = ${ state ~ ":" }
 // =============================================================================
 actions            = _{ block_start ~ (comment | action+) ~ trailing_comment? ~ block_end }
 action             = !{ (multi_tape_action | single_tape_action) }
-multi_tape_action  =  { multi_tape_symbols ~ "->" ~ multi_tape_symbols ~ "," ~ directions ~ "," ~ state }
+multi_tape_action  =  { multi_tape_symbols ~ ("->" ~ multi_tape_symbols)? ~ "," ~ directions ~ "," ~ state }
 multi_tape_symbols =  { "[" ~ symbol ~ ("," ~ symbol)* ~ "]" }
 single_tape_action =  { symbol ~ ("->" ~ symbol)? ~ "," ~ direction ~ "," ~ state }
 directions         =  { "[" ~ direction ~ ("," ~ direction)* ~ "]" }

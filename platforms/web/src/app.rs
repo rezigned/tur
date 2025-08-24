@@ -1,10 +1,11 @@
-use crate::components::{GraphView, ProgramEditor, ShareButton, TapeView};
+use crate::components::{GraphView, MachineState, ProgramEditor, ShareButton, TapeView};
 use crate::url_sharing::UrlSharing;
 use action::Action;
 use gloo_events::EventListener;
 
 use keymap::{Config, KeyMapConfig};
-use tur::{Direction, ExecutionResult, Program, ProgramManager, Transition, TuringMachine};
+use tur::types::Halt;
+use tur::{Direction, Program, ProgramManager, Step, Transition, TuringMachine};
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
@@ -33,6 +34,7 @@ pub struct App {
     last_transition: Option<Transition>,
     previous_state: String,
     speed: u64,
+    machine_state: MachineState,
 
     _keyboard_listener: EventListener,
     keymap: Config<Action>,
@@ -64,6 +66,7 @@ impl App {
             last_transition: None,
             previous_state: initial_state,
             speed: 500,
+            machine_state: MachineState::Running,
 
             _keyboard_listener: keyboard_listener,
             keymap: Action::keymap_config(),
@@ -146,7 +149,7 @@ impl Component for App {
                         self.show_program_editor_help = !self.show_program_editor_help;
                     }
                     Action::PreviousProgram => {
-                        let count = ProgramManager::get_program_count();
+                        let count = ProgramManager::count();
                         if count > 0 {
                             let new_index = if self.current_program == 0
                                 || self.current_program == usize::MAX
@@ -159,7 +162,7 @@ impl Component for App {
                         }
                     }
                     Action::NextProgram => {
-                        let count = ProgramManager::get_program_count();
+                        let count = ProgramManager::count();
                         if count > 0 {
                             let new_index = if self.current_program == usize::MAX {
                                 0
@@ -181,55 +184,46 @@ impl Component for App {
             }
             Msg::Step => {
                 if self.machine.is_halted() {
-                    self.message = "Machine is halted. Reset to continue.".to_string();
+                    self.message = "Machine is halted. Press 'r' to reset.".to_string();
                     self.auto_play = false;
-                    self.last_transition = None;
-                } else {
-                    let last_head_positions = self.machine.head_positions().to_vec();
-                    let last_tape_lengths: Vec<usize> =
-                        self.machine.tapes().iter().map(|t| t.len()).collect();
+                    self.machine_state = MachineState::Halted;
+                    return true;
+                }
 
-                    // Store the current state as previous state before stepping
-                    self.previous_state = self.machine.state().to_string();
+                self.previous_state = self.machine.state().to_string();
+                self.last_transition = self.machine.transition().cloned();
+                let last_head_positions = self.machine.heads().to_vec();
+                let last_tape_lengths: Vec<usize> =
+                    self.machine.tapes().iter().map(|t| t.len()).collect();
 
-                    // Get the transition that will be executed before stepping
-                    self.last_transition = self.machine.get_current_transition().cloned();
+                let result = self.machine.step();
 
-                    match self.machine.step() {
-                        ExecutionResult::Continue => {
-                            self.message = format!("Step {} completed", self.machine.step_count());
-                        }
-                        ExecutionResult::Halt => {
-                            self.message = "Machine halted".to_string();
-                            self.auto_play = false;
-                        }
-                        ExecutionResult::Error(e) => {
-                            self.message = format!("Error: {}", e);
-                            self.auto_play = false;
-                            self.last_transition = None;
-                        }
+                match result {
+                    Step::Continue => {
+                        self.message = format!("Step {} completed", self.machine.step_count());
+                        self.machine_state = MachineState::Running;
                     }
+                    Step::Halt(reason) => {
+                        self.message = match reason {
+                            Halt::Ok => "Machine halted".to_string(),
+                            Halt::Err(err) => format!("Machine halted with error: {err}"),
+                        };
+                        self.machine_state = MachineState::Halted;
+                        self.auto_play = false;
+                    }
+                }
 
-                    // let new_head_positions = self.machine.head_positions().to_vec();
-                    let new_tape_lengths: Vec<usize> =
-                        self.machine.tapes().iter().map(|t| t.len()).collect();
+                // Update tape's left offset for animation purposes
+                let new_tape_lengths: Vec<usize> =
+                    self.machine.tapes().iter().map(|t| t.len()).collect();
 
-                    if let Some(transition) = &self.last_transition {
-                        for i in 0..last_head_positions.len() {
-                            // web_sys::console::log_1(
-                            //     &format!(
-                            //         "{i} = {:?}, {new_tape_lengths:?} = {last_tape_lengths:?}",
-                            //         transition.directions[i]
-                            //     )
-                            //     .into(),
-                            // );
-
-                            // Check if tape expanded to the left (length increased)
-                            if transition.directions[i] == Direction::Left
-                                && new_tape_lengths[i] > last_tape_lengths[i]
-                            {
-                                self.tape_left_offsets[i] += 1;
-                            }
+                if let Some(transition) = &self.last_transition {
+                    for i in 0..last_head_positions.len() {
+                        // Check if tape expanded to the left (length increased)
+                        if transition.directions[i] == Direction::Left
+                            && new_tape_lengths[i] > last_tape_lengths[i]
+                        {
+                            self.tape_left_offsets[i] += 1;
                         }
                     }
                 }
@@ -242,6 +236,7 @@ impl Component for App {
                 self.last_transition = None;
                 self.tape_left_offsets = vec![0; self.machine.tapes().len()];
                 self.previous_state = self.machine.initial_state().to_string();
+                self.machine_state = MachineState::Running;
                 true
             }
             Msg::ToggleAutoPlay => {
@@ -278,14 +273,16 @@ impl Component for App {
                     self.last_transition = None;
                     self.previous_state = program.initial_state.clone();
                     self.machine = TuringMachine::new(program);
+                    self.tape_left_offsets = vec![0; self.machine.tapes().len()];
                     self.message = "".to_string();
+                    self.machine_state = MachineState::Running;
                     true
                 } else {
                     false
                 }
             }
             Msg::AutoStep => {
-                if self.auto_play && !self.machine.is_halted() {
+                if self.auto_play && self.machine_state == MachineState::Running {
                     ctx.link().send_message(Msg::Step);
 
                     let link = ctx.link().clone();
@@ -305,7 +302,9 @@ impl Component for App {
                 self.last_transition = None;
                 self.previous_state = program.initial_state.clone();
                 self.machine = TuringMachine::new(program);
+                self.tape_left_offsets = vec![0; self.machine.tapes().len()];
                 self.message = "".to_string();
+                self.machine_state = MachineState::Running;
                 true
             }
             Msg::EditorError(error) => {
@@ -387,20 +386,21 @@ impl Component for App {
                                 <div class="card-body">
                                     <TapeView
                                         tapes={self.machine.tapes().to_vec()}
-                                        head_positions={self.machine.head_positions().to_vec()}
+                                        head_positions={self.machine.heads().to_vec()}
                                         auto_play={self.auto_play}
-                                        is_halted={self.machine.is_halted()}
+                                        machine_state={self.machine_state.clone()}
                                         is_program_ready={self.is_program_ready}
-                                        blank_symbol={self.machine.blank_symbol()}
+                                        blank_symbol={self.machine.blank()}
                                         state={self.machine.state().to_string()}
                                         step_count={self.machine.step_count()}
-                                        current_symbols={self.machine.get_current_symbols()}
+                                        current_symbols={self.machine.symbols()}
                                         on_step={link.callback(|_| Msg::Step)}
                                         on_reset={link.callback(|_| Msg::Reset)}
                                         on_toggle_auto={link.callback(|_| Msg::ToggleAutoPlay)}
                                         speed={self.speed}
                                         on_speed_change={link.callback(|speed: u64| Msg::SetSpeed(speed))}
                                         tape_left_offsets={self.tape_left_offsets.clone()}
+                                        message={self.message.clone()}
                                     />
                                 </div>
                             </div>

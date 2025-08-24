@@ -1,3 +1,4 @@
+use crate::components::MachineState;
 use yew::{function_component, html, Callback, Event, Html, Properties, TargetCast};
 
 #[derive(Properties, PartialEq)]
@@ -5,7 +6,7 @@ pub struct TapeViewProps {
     pub tapes: Vec<Vec<char>>,
     pub head_positions: Vec<usize>,
     pub auto_play: bool,
-    pub is_halted: bool,
+    pub machine_state: MachineState,
     pub is_program_ready: bool,
     pub blank_symbol: char,
     pub state: String,
@@ -17,6 +18,7 @@ pub struct TapeViewProps {
     pub speed: u64,
     pub on_speed_change: Callback<u64>,
     pub tape_left_offsets: Vec<usize>,
+    pub message: String,
 }
 
 #[function_component(TapeView)]
@@ -25,6 +27,7 @@ pub fn tape_view(props: &TapeViewProps) -> Html {
     let padding_cells = 15; // Number of blank cells to show on each side for infinite tape effect
 
     let on_speed_change = props.on_speed_change.clone();
+    let is_machine_running = props.machine_state == MachineState::Running;
 
     html! {
         <div class="tape-view">
@@ -34,7 +37,7 @@ pub fn tape_view(props: &TapeViewProps) -> Html {
                     <button
                         class="btn btn-primary"
                         onclick={props.on_step.reform(|_| ())}
-                        disabled={props.is_halted || !props.is_program_ready}
+                        disabled={!is_machine_running || !props.is_program_ready}
                     >
                         {"Step"}
                     </button>
@@ -48,7 +51,7 @@ pub fn tape_view(props: &TapeViewProps) -> Html {
                     <button
                         class={format!("btn {}", if props.auto_play { "btn-warning" } else { "btn-success" })}
                         onclick={props.on_toggle_auto.reform(|_| ())}
-                        disabled={props.is_halted || !props.is_program_ready}
+                        disabled={!is_machine_running || !props.is_program_ready}
                     >
                         {if props.auto_play { "Pause" } else { "Auto" }}
                     </button>
@@ -150,27 +153,24 @@ pub fn tape_view(props: &TapeViewProps) -> Html {
                 </div>
                 <div class="state-item">
                     <span class="label">{"Status"}</span>
-                    <span class={
-                        if props.is_halted {
-                            "value status halted"
-                        } else if props.auto_play {
-                            "value status running"
-                        } else {
-                            "value status ready"
-                        }
-                    }>
-                        {
-                            if props.is_halted {
-                                "HALTED"
-                            } else if props.auto_play {
-                                "RUNNING"
-                            } else {
-                                "READY"
-                            }
-                        }
+                    <span class={match props.machine_state {
+                        MachineState::Halted => "value status halted",
+                        MachineState::Running if props.auto_play => "value status running",
+                        MachineState::Running => "value status ready",
+                    }}>
+                        {match props.machine_state {
+                            MachineState::Halted => "HALTED",
+                            MachineState::Running if props.auto_play => "RUNNING",
+                            MachineState::Running => "READY",
+                        }}
                     </span>
                 </div>
             </div>
+            {if !props.message.is_empty() {
+                html! { <div class="status-message">{&props.message}</div> }
+            } else {
+                html! {}
+            }}
         </div>
     }
 }

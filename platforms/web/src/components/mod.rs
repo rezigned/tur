@@ -4,6 +4,12 @@ mod program_selector;
 mod share_button;
 mod tape_view;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum MachineState {
+    Running,
+    Halted,
+}
+
 pub use graph_view::GraphView;
 pub use program_editor::ProgramEditor;
 pub use program_selector::ProgramSelector;

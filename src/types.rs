@@ -13,6 +13,8 @@ pub const DEFAULT_BLANK_SYMBOL: char = ' ';
 pub const INPUT_BLANK_SYMBOL: char = '_';
 /// The maximum allowed size for a Turing Machine program in bytes.
 pub const MAX_PROGRAM_SIZE: usize = 65536; // 64KB
+/// The maximum number of steps to execute before halting.
+pub const MAX_EXECUTION_STEPS: usize = 10000;
 
 /// Represents a Turing Machine program, supporting both single and multi-tape configurations.
 ///
@@ -21,6 +23,8 @@ pub const MAX_PROGRAM_SIZE: usize = 65536; // 64KB
 pub struct Program {
     /// The name of the Turing Machine program.
     pub name: String,
+    /// Execution mode of the simulator.
+    pub mode: Mode,
     /// The initial state of the Turing Machine.
     pub initial_state: String,
     /// A vector of strings, where each string represents the initial content of a tape.
@@ -32,6 +36,20 @@ pub struct Program {
     /// A hash map representing the transition rules. The key is the current state,
     /// and the value is a vector of possible `Transition`s from that state.
     pub rules: HashMap<String, Vec<Transition>>,
+}
+
+/// The execution mode for a Turing Machine program.
+///
+/// Controls how the simulator handles undefined transitions:
+/// - `Normal` (default): undefined transitions halt the machine normally (faithful to TM theory).
+/// - `Strict`: undefined transitions trigger an error, useful for debugging or catching missing rules.
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
+pub enum Mode {
+    /// Undefined transitions halt normally.
+    #[default]
+    Normal,
+    /// Undefined transitions are treated as errors.
+    Strict,
 }
 
 impl Program {
@@ -50,6 +68,13 @@ impl Program {
     /// Checks if the program is configured for a single-tape Turing Machine.
     pub fn is_single_tape(&self) -> bool {
         self.tapes.len() == 1
+    }
+
+    pub fn tapes(&self) -> Vec<Vec<char>> {
+        self.tapes
+            .iter()
+            .map(|tape| tape.chars().collect())
+            .collect()
     }
 }
 
@@ -80,56 +105,28 @@ pub enum Direction {
     Stay,
 }
 
-/// Represents a single step in the execution of a Turing Machine.
-///
-/// This struct captures the machine's state, tape contents, head positions,
-/// and symbols read at a particular point in time during execution.
-#[derive(Debug, Clone)]
-pub struct ExecutionStep {
-    /// The state of the Turing Machine at this step.
-    pub state: String,
-    /// The content of all tapes at this step.
-    pub tapes: Vec<Vec<char>>,
-    /// The head positions for all tapes at this step.
-    pub head_positions: Vec<usize>,
-    /// The symbols read from each tape at this step.
-    pub symbols_read: Vec<char>,
-    /// The transition rule that was applied to reach this step (optional).
-    pub transition: Option<Transition>,
-}
-
-impl ExecutionStep {
-    /// Returns the content of the first tape as a `Vec<char>`.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn tape(&self) -> Vec<char> {
-        self.tapes.first().cloned().unwrap_or_default()
-    }
-
-    /// Returns the head position of the first tape.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn head_position(&self) -> usize {
-        self.head_positions.first().cloned().unwrap_or(0)
-    }
-
-    /// Returns the symbol read from the first tape.
-    /// This is a convenience method for single-tape compatibility.
-    pub fn symbol_read(&self) -> char {
-        self.symbols_read
-            .first()
-            .cloned()
-            .unwrap_or(DEFAULT_BLANK_SYMBOL)
-    }
-}
-
 /// Represents the outcome of a Turing Machine execution step.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ExecutionResult {
+pub enum Step {
     /// The machine successfully performed a step and continues execution.
     Continue,
     /// The machine has halted (reached a state with no outgoing transitions).
-    Halt,
-    /// An error occurred during execution.
-    Error(TuringMachineError),
+    Halt(Halt),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Halt {
+    /// Halted in a specific state (no outgoing transitions).
+    Ok,
+
+    Err(TuringMachineError),
+}
+
+/// Details of a rejection outcome.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Rejection {
+    pub state: String,
+    pub symbols: Vec<char>,
 }
 
 /// Represents various errors that can occur during Turing Machine operations.
@@ -138,12 +135,9 @@ pub enum TuringMachineError {
     /// Indicates an attempt to transition to an invalid or undefined state.
     #[error("Invalid state: {0}")]
     InvalidState(String),
-    /// Indicates that no transition rule was found for the current state and symbol on a single tape.
-    #[error("No transition defined for state {state} and symbol '{symbol}'")]
-    NoTransition { state: String, symbol: char },
-    /// Indicates that no transition rule was found for the current state and symbols on multiple tapes.
-    #[error("No transition defined for state {state} and symbols {symbols:?}")]
-    NoMultiTapeTransition { state: String, symbols: Vec<char> },
+    /// Indicates that there's no rule defined for a particular set of symbols.
+    #[error("No rule defined for state {0} and symbols {1:?}")]
+    UndefinedTransition(String, Vec<char>),
     /// Indicates that a tape head attempted to move beyond the defined tape boundaries.
     #[error("Tape boundary exceeded")]
     TapeBoundary,
@@ -196,14 +190,10 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let error = TuringMachineError::NoTransition {
-            state: "q0".to_string(),
-            symbol: 'a',
-        };
+        let error = TuringMachineError::InvalidState("q0".to_string());
 
         let error_msg = format!("{}", error);
-        assert!(error_msg.contains("No transition defined"));
+        assert!(error_msg.contains("Invalid state"));
         assert!(error_msg.contains("q0"));
-        assert!(error_msg.contains("'a'"));
     }
 }

@@ -49,7 +49,7 @@ window.addEventListener("load", () => {
           // Section headers
           if (
             stream.match(
-              /^(name|head|heads|blank|tape|tapes|states|rules):/,
+              /^(name|mode|head|heads|blank|tape|tapes|states|rules):/,
             )
           ) {
             const matched = stream.current();

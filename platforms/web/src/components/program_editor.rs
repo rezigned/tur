@@ -121,15 +121,9 @@ Please reduce the program size.",
                 } else {
                     match parse(&self.program_text) {
                         Ok(program) => {
-                            if let Err(validation_error) = validate_program_structure(&program) {
-                                self.parse_error = Some(validation_error.clone());
-                                self.is_valid = false;
-                                ctx.props().on_error.emit(validation_error);
-                            } else {
-                                self.parse_error = None;
-                                self.is_valid = true;
-                                ctx.props().on_program_submit.emit(program);
-                            }
+                            self.parse_error = None;
+                            self.is_valid = true;
+                            ctx.props().on_program_submit.emit(program);
                         }
                         Err(e) => {
                             let error_msg = format_parse_error(&e);
@@ -320,43 +314,6 @@ fn extract_line_info(error: &str) -> (String, String) {
 
     // If no line info found, return empty line info
     ("".to_string(), error.to_string())
-}
-
-fn validate_program_structure(program: &Program) -> Result<(), String> {
-    // Check for empty name
-    if program.name.trim().is_empty() {
-        return Err("Program name cannot be empty.\n\nAdd: name: Your Program Name".to_string());
-    }
-
-    // Check for empty tape
-    if program.initial_tape().is_empty() {
-        return Err("Initial tape cannot be empty.\n\nAdd: tape: your_initial_content".to_string());
-    }
-
-    // Check for no transitions
-    if program.rules.is_empty() {
-        return Err("Program must have at least one state with rules.\n\nAdd rules section with at least one state.".to_string());
-    }
-
-    // Check for unreachable states (basic check)
-    let mut reachable_states = std::collections::HashSet::new();
-    reachable_states.insert("start".to_string());
-
-    for transitions in program.rules.values() {
-        for transition in transitions {
-            reachable_states.insert(transition.next_state.clone());
-        }
-    }
-
-    // Check if initial state exists
-    if !program.rules.contains_key(&program.initial_state) {
-        return Err(format!(
-            "Initial state '{}' not defined in rules.",
-            program.initial_state
-        ));
-    }
-
-    Ok(())
 }
 
 fn format_parse_error(error: &TuringMachineError) -> String {

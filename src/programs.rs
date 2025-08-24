@@ -3,10 +3,11 @@ use crate::types::{Program, TuringMachineError};
 use std::sync::RwLock;
 
 // Default embedded programs
-const PROGRAM_TEXTS: [&str; 8] = [
+const PROGRAM_TEXTS: [&str; 9] = [
     include_str!("../examples/binary-addition.tur"),
-    include_str!("../examples/palindrome.tur"),
+    include_str!("../examples/even-zeros-and-ones.tur"),
     include_str!("../examples/event-number-checker.tur"),
+    include_str!("../examples/palindrome.tur"),
     include_str!("../examples/subtraction.tur"),
     include_str!("../examples/busy-beaver-3.tur"),
     include_str!("../examples/multi-tape-copy.tur"),
@@ -47,7 +48,7 @@ impl ProgramManager {
     }
 
     /// Get the number of available programs
-    pub fn get_program_count() -> usize {
+    pub fn count() -> usize {
         // Initialize with default programs if not already initialized
         let _ = Self::load();
 
@@ -168,6 +169,7 @@ mod tests {
     use super::*;
     use crate::analyze;
     use crate::machine::TuringMachine;
+    use crate::types::Step;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
@@ -179,7 +181,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Check that we have the expected number of programs
-        assert!(ProgramManager::get_program_count() >= 4);
+        assert!(ProgramManager::count() >= 4);
     }
 
     #[test]
@@ -218,7 +220,7 @@ rules:
         // Initialize with default programs
         let _ = ProgramManager::load();
 
-        let count = ProgramManager::get_program_count();
+        let count = ProgramManager::count();
         for i in 0..count {
             let program = ProgramManager::get_program_by_index(i).unwrap();
             assert!(
@@ -245,20 +247,16 @@ rules:
         // Initialize with default programs
         let _ = ProgramManager::load();
 
-        let count = ProgramManager::get_program_count();
+        let count = ProgramManager::count();
         for i in 0..count {
             let program = ProgramManager::get_program_by_index(i).unwrap();
-            let program_name = program.name.clone();
             let mut machine = TuringMachine::new(program);
             let result = machine.step();
 
-            // Should either continue or halt, but not error on first step
+            // Should either continue or halt, but not error or reject on first step
             match result {
-                crate::types::ExecutionResult::Continue => {}
-                crate::types::ExecutionResult::Halt => {}
-                crate::types::ExecutionResult::Error(e) => {
-                    panic!("Program '{}' failed on first step: {}", program_name, e);
-                }
+                Step::Continue => {}
+                Step::Halt(_) => {}
             }
         }
     }
