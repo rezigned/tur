@@ -1854,7 +1854,7 @@ dependencies = [
 
 [[package]]
 name = "tur"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "lazy_static",
  "pest",
@@ -1867,7 +1867,7 @@ dependencies = [
 
 [[package]]
 name = "tur-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "atty",
  "clap",
@@ -1876,7 +1876,7 @@ dependencies = [
 
 [[package]]
 name = "tur-tui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "action",
  "atty",
@@ -1889,7 +1889,7 @@ dependencies = [
 
 [[package]]
 name = "tur-web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "action",
  "base64",
