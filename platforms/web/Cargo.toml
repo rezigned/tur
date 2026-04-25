@@ -22,7 +22,7 @@ wasm-logger = "0.2"
 gloo-timers = { version = "0.3", features = ["futures"] }
 gloo-events = "0.2"
 regex = "1.10"
-keymap = { version = "1.0.0-rc.3", features = ["wasm"] }
+keymap = { version = "1.0.0-rc.5", features = ["wasm"] }
 
 [features]
 default = ["console_error_panic_hook"]

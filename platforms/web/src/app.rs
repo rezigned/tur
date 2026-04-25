@@ -342,7 +342,7 @@ impl Component for App {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
         let help_text_items = self.keymap.items.iter().filter(|(_, item)| !item.description.contains("Quit")).map(|(_, item)| {
-            html! { <li><kbd class="kbd">{ item.keys.join(", ") }</kbd>{ format!(": {}", item.description) }</li> }
+            html! { <li><kbd class="kbd">{ item.keys.join(", ") }</kbd>{ format!(" {}", item.description) }</li> }
         }).collect::<Html>();
 
         html! {

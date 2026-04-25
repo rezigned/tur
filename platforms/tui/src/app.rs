@@ -448,7 +448,7 @@ fn section<'a>(title: &'a str, content: Vec<Line<'a>>) -> Paragraph<'a> {
     Paragraph::new(content).block(block(title))
 }
 
-fn block(title: &str) -> Block {
+fn block(title: &str) -> Block<'_> {
     Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)

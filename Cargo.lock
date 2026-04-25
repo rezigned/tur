@@ -7,6 +7,7 @@ name = "action"
 version = "0.0.1"
 dependencies = [
  "keymap",
+ "serde",
 ]
 
 [[package]]
@@ -1070,9 +1071,9 @@ dependencies = [
 
 [[package]]
 name = "keymap"
-version = "1.0.0-rc.3"
+version = "1.0.0-rc.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28201c593f9ddadde577e1349d975dbedc3ff024ea3f2c090faef784b2c1f2e3"
+checksum = "73a8d4a6af2efde4fe0d3c9a129fbd6d2d56f9fc202004e09daea1ef5db575ff"
 dependencies = [
  "crossterm 0.29.0",
  "keymap_derive",
@@ -1084,9 +1085,9 @@ dependencies = [
 
 [[package]]
 name = "keymap_derive"
-version = "1.0.0-rc.3"
+version = "1.0.0-rc.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7132f53df5e1d203cdfa4dcdab2f7f9007c6e4f41656d5a59a729bea10593889"
+checksum = "40efa7b99355606cd561d33bd989e5a62f8f8e79e0c5bcbde268255a8914cb2c"
 dependencies = [
  "keymap_parser",
  "proc-macro2",
@@ -1096,13 +1097,13 @@ dependencies = [
 
 [[package]]
 name = "keymap_parser"
-version = "1.0.0-rc.3"
+version = "1.0.0-rc.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e10c0e198477a350c85aa57bd3dd1f191d6cd5d71625492671f4c988b6c4e42c"
+checksum = "d8c84a5e79d8de27f23148770db706954c252b8a8f6c7c0c70d8f0a451d9812f"
 dependencies = [
  "serde",
- "strum 0.27.2",
- "strum_macros 0.27.2",
+ "strum 0.28.0",
+ "strum_macros 0.28.0",
 ]
 
 [[package]]
@@ -1676,9 +1677,9 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.27.2"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
+checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
 
 [[package]]
 name = "strum_macros"
@@ -1695,9 +1696,9 @@ dependencies = [
 
 [[package]]
 name = "strum_macros"
-version = "0.27.2"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
+checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
 dependencies = [
  "heck",
  "proc-macro2",
