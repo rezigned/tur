@@ -28,7 +28,7 @@ regex = "1.10"
 # Core library as root package
 [package]
 name = "tur"
-version = "0.1.0"
+version = "0.2.0"
 description = "Turing Machine Language - Parser, interpreter, and execution engine"
 authors.workspace = true
 edition.workspace = true

@@ -1,13 +1,13 @@
 [package]
 name = "tur-web"
-version = "0.1.0"
+version = "0.2.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Web frontend for Turing machine simulator"
 
 [dependencies]
-tur = { path = "../../", version = "0.1.0" }
+tur = { path = "../../", version = "0.2.0" }
 action = { path = "../action/", version = "0.0.1" }
 wasm-bindgen = "0.2"
 js-sys = "0.3"
